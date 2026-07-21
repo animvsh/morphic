@@ -9,6 +9,7 @@ import {
 } from 'ai'
 
 import { researcher } from '@/lib/agents/researcher'
+import { removeRawFilesFromModelMessages } from '@/lib/attachments/message-context'
 import {
   createPublicErrorResponse,
   serializePublicError
@@ -22,7 +23,9 @@ import {
 } from '../utils/context-window'
 import { isUsageLogging, logUsage } from '../utils/usage-logging'
 
+import { buildResearchSearchContext } from './helpers/build-research-search-context'
 import { convertDataPart } from './helpers/convert-data-part'
+import { reinforceConversationContext } from './helpers/reinforce-conversation-context'
 import { stripReasoningParts } from './helpers/strip-reasoning-parts'
 import { stripSpecFromMessages } from './helpers/strip-spec-from-messages'
 import { BaseStreamConfig } from './types'
@@ -63,7 +66,9 @@ export async function createEphemeralChatStreamResponse(
 
     try {
       const isOpenAI = `${model.providerId}:${model.id}`.startsWith('openai:')
-      const messagesWithoutSpec = stripSpecFromMessages(messages)
+      const messagesWithoutSpec = stripSpecFromMessages(
+        removeRawFilesFromModelMessages(messages)
+      )
       const messagesToConvert = isOpenAI
         ? stripReasoningParts(messagesWithoutSpec)
         : messagesWithoutSpec
@@ -78,6 +83,7 @@ export async function createEphemeralChatStreamResponse(
         toolCalls: 'before-last-2-messages',
         emptyMessages: 'remove'
       })
+      modelMessages = reinforceConversationContext(modelMessages)
 
       if (shouldTruncateMessages(modelMessages, model)) {
         const maxTokens = getMaxAllowedTokens(model)
@@ -87,12 +93,15 @@ export async function createEphemeralChatStreamResponse(
       const researchAgent = researcher({
         model: `${model.providerId}:${model.id}`,
         modelConfig: model,
-        searchMode
+        searchMode,
+        searchContext: buildResearchSearchContext(messages)
       })
 
       const modelId = `${model.providerId}:${model.id}`
       const result = await researchAgent.stream({
-        messages: modelMessages,
+        // Keep every guest turn in the active prompt so follow-ups can refer
+        // to the answer immediately above instead of behaving like a new chat.
+        prompt: modelMessages,
         abortSignal,
         experimental_transform: smoothStream({ chunking: 'word' }),
         ...(isUsageLogging() && {

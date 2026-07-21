@@ -1,11 +1,8 @@
 'use server'
 
 import { LangfuseClient } from '@langfuse/client'
-import { eq } from 'drizzle-orm'
 
-import { db } from '@/lib/db'
-import { messages } from '@/lib/db/schema'
-import { withOptionalRLS } from '@/lib/db/with-rls'
+import { getInsForgeAdminClient } from '@/lib/insforge/admin'
 import type { UIMessageMetadata } from '@/lib/types/ai'
 import { isTracingEnabled } from '@/lib/utils/telemetry'
 
@@ -15,43 +12,25 @@ export async function updateMessageFeedback(
   userId: string | null = null
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Use RLS context for all database operations
-    const result = await withOptionalRLS(userId, async tx => {
-      // Get the current message to preserve existing metadata and get chatId
-      const [currentMessage] = await tx
-        .select({
-          metadata: messages.metadata,
-          chatId: messages.chatId
-        })
-        .from(messages)
-        .where(eq(messages.id, messageId))
-        .limit(1)
+    const client = getInsForgeAdminClient()
+    let query = client.database
+      .from('brok_messages')
+      .select('metadata, brok_chats!inner(user_id)')
+      .eq('id', messageId)
+    if (userId) query = query.eq('brok_chats.user_id', userId)
+    const { data: currentMessage, error: loadError } = await query.maybeSingle()
+    if (loadError) throw loadError
+    if (!currentMessage) return { success: false, error: 'Message not found' }
 
-      if (!currentMessage) {
-        return { success: false, error: 'Message not found' }
-      }
-
-      // Merge the feedback score with existing metadata
-      const updatedMetadata = {
-        ...(currentMessage.metadata || {}),
-        feedbackScore: score
-      }
-
-      // Update the message with the new feedback score
-      await tx
-        .update(messages)
-        .set({ metadata: updatedMetadata })
-        .where(eq(messages.id, messageId))
-
-      return { success: true, metadata: currentMessage.metadata }
-    })
-
-    if (!result.success) {
-      return result
-    }
+    const metadata = (currentMessage.metadata ?? {}) as UIMessageMetadata
+    const { error: updateError } = await client.database
+      .from('brok_messages')
+      .update({ metadata: { ...metadata, feedbackScore: score } })
+      .eq('id', messageId)
+    if (updateError) throw updateError
 
     // Send feedback to Langfuse if trace ID exists and tracing is enabled
-    const traceId = (result.metadata as UIMessageMetadata)?.traceId
+    const traceId = metadata.traceId
     if (traceId && isTracingEnabled()) {
       const langfuse = new LangfuseClient()
       langfuse.score.create({
@@ -80,21 +59,16 @@ export async function getMessageFeedback(
   userId: string | null = null
 ): Promise<number | null> {
   try {
-    const result = await withOptionalRLS(userId, async tx => {
-      const [message] = await tx
-        .select({ metadata: messages.metadata })
-        .from(messages)
-        .where(eq(messages.id, messageId))
-        .limit(1)
-
-      if (!message) {
-        return null
-      }
-
-      return (message.metadata as UIMessageMetadata)?.feedbackScore || null
-    })
-
-    return result
+    const client = getInsForgeAdminClient()
+    let query = client.database
+      .from('brok_messages')
+      .select('metadata, brok_chats!inner(user_id)')
+      .eq('id', messageId)
+    if (userId) query = query.eq('brok_chats.user_id', userId)
+    const { data: message, error } = await query.maybeSingle()
+    if (error) throw error
+    if (!message) return null
+    return (message.metadata as UIMessageMetadata)?.feedbackScore ?? null
   } catch (error) {
     console.error('Error getting message feedback:', error)
     return null

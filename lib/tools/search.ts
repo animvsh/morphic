@@ -14,11 +14,31 @@ import {
   DEFAULT_PROVIDER,
   SearchProviderType
 } from './search/providers'
+import type { IdentityResolution } from './identity-resolution'
+import {
+  buildIdentityResolution,
+  constrainIdentityAttributionResults,
+  enrichIdentityAttributionResults,
+  extractAchievementPersonAnchor,
+  isPersonAchievementSearch,
+  shouldExpandIdentityCompanySearch
+} from './identity-resolution'
+import {
+  extractIdentityCompanyCandidates,
+  extractPersonAnchor,
+  groundIdentitySearchQuery
+} from './search-query-grounding'
 
 /**
  * Creates a search tool with the appropriate schema for the given model.
  */
-export function createSearchTool(fullModel: string) {
+export function createSearchTool(
+  fullModel: string,
+  searchContext?: string,
+  onIdentityResolution?: (resolution: IdentityResolution) => void
+) {
+  let identityExpansionClaimed = false
+
   return tool({
     description: getSearchToolDescription(),
     inputSchema: getSearchSchemaForModel(fullModel),
@@ -34,10 +54,21 @@ export function createSearchTool(fullModel: string) {
       },
       context
     ) {
-      // Yield initial searching state
+      const filledQuery = groundIdentitySearchQuery({ query, searchContext })
+      const personAnchor =
+        extractPersonAnchor(searchContext) ??
+        extractAchievementPersonAnchor(searchContext)
+      const shouldExpandIdentityCompanies =
+        !identityExpansionClaimed &&
+        !!personAnchor &&
+        shouldExpandIdentityCompanySearch(searchContext)
+      if (shouldExpandIdentityCompanies) identityExpansionClaimed = true
+
+      // Show the exact query sent to the provider so the research trail is
+      // honest and users can see when identity grounding was applied.
       yield {
         state: 'searching' as const,
-        query
+        query: filledQuery
       }
       // Ensure max_results is at least 10
       const minResults = 10
@@ -47,8 +78,6 @@ export function createSearchTool(fullModel: string) {
       )
       const effectiveSearchDepth = search_depth as 'basic' | 'advanced'
 
-      // Use the original query as is - any provider-specific handling will be done in the provider
-      const filledQuery = query
       let searchResult: SearchResults
 
       // Determine which provider to use based on type
@@ -135,6 +164,207 @@ export function createSearchTool(fullModel: string) {
               exclude_domains
             )
           }
+
+          if (personAnchor) {
+            const constrainedResults = isPersonAchievementSearch(searchContext)
+              ? await enrichIdentityAttributionResults(
+                  searchResult.results,
+                  personAnchor
+                )
+              : constrainIdentityAttributionResults(
+                  searchResult.results,
+                  personAnchor
+                )
+            searchResult = {
+              ...searchResult,
+              results: constrainedResults,
+              number_of_results: constrainedResults.length
+            }
+          }
+
+          if (shouldExpandIdentityCompanies && personAnchor) {
+            const currentYear = new Date().getUTCFullYear()
+            const discoveryQueries = [
+              `"${personAnchor}" founder current company latest ${currentYear}`,
+              `site:linkedin.com/posts "${personAnchor}" founder ${currentYear}`
+            ]
+            const discoveries = await Promise.all(
+              discoveryQueries
+                .filter(discoveryQuery => discoveryQuery !== filledQuery)
+                .map(discoveryQuery =>
+                  searchProvider.search(
+                    discoveryQuery,
+                    Math.min(effectiveMaxResults, 10),
+                    effectiveSearchDepthForAPI,
+                    include_domains,
+                    exclude_domains
+                  )
+                )
+            )
+            const discoveryResults = constrainIdentityAttributionResults(
+              discoveries.flatMap(discovery => discovery.results),
+              personAnchor
+            )
+            const candidates = extractIdentityCompanyCandidates(
+              [...discoveryResults, ...searchResult.results].map(
+                result =>
+                  `${result.title ?? ''} ${result.url ?? ''} ${result.content ?? ''}`
+              )
+            )
+
+            if (candidates.length > 0) {
+              const personSlug = personAnchor
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+              const expansions = await Promise.all(
+                candidates.map(async candidate => {
+                  const candidateSearches = await Promise.all(
+                    [
+                      'product',
+                      'what it does',
+                      'company brain',
+                      'waitlist website'
+                    ].map(intent =>
+                      searchProvider.search(
+                        `site:linkedin.com/posts/${personSlug} ${candidate} ${intent}`,
+                        Math.min(effectiveMaxResults, 10),
+                        effectiveSearchDepthForAPI,
+                        include_domains,
+                        exclude_domains
+                      )
+                    )
+                  )
+                  const candidateResults = interleaveResults(
+                    candidateSearches.map(search => search.results)
+                  ).filter(
+                    (result, index, all) =>
+                      all.findIndex(
+                        candidate => candidate.url === result.url
+                      ) === index
+                  )
+                  return {
+                    ...candidateSearches[0],
+                    query: `identity product verification: ${candidate}`,
+                    results: candidateResults,
+                    number_of_results: candidateResults.length
+                  }
+                })
+              )
+              const productEvidenceResolution = buildIdentityResolution({
+                person: personAnchor,
+                candidates: candidates.map((company, index) => ({
+                  company,
+                  results: expansions[index]?.results ?? []
+                }))
+              })
+              const identityResolution =
+                productEvidenceResolution ??
+                buildIdentityResolution({
+                  person: personAnchor,
+                  candidates: candidates.map((company, index) => ({
+                    company,
+                    results: [
+                      ...(expansions[index]?.results ?? []),
+                      ...discoveryResults,
+                      ...searchResult.results
+                    ].filter(result =>
+                      `${result.title} ${result.content}`
+                        .toLowerCase()
+                        .includes(company)
+                    )
+                  }))
+                })
+              if (identityResolution) {
+                onIdentityResolution?.(identityResolution)
+              }
+              const orderedExpansions = identityResolution
+                ? candidates
+                    .map((company, index) => ({
+                      company,
+                      results: expansions[index]?.results ?? []
+                    }))
+                    .filter(
+                      candidate =>
+                        candidate.company ===
+                        identityResolution.current_company_candidate
+                    )
+                    .sort((a, b) => {
+                      const current =
+                        identityResolution.current_company_candidate
+                      if (a.company === current) return -1
+                      if (b.company === current) return 1
+                      return 0
+                    })
+                    .map(candidate => candidate.results)
+                : expansions.map(expansion => expansion.results)
+              const historicalCandidateUrls = identityResolution
+                ? new Set(
+                    candidates.flatMap((company, index) => {
+                      if (
+                        company === identityResolution.current_company_candidate
+                      ) {
+                        return []
+                      }
+                      return (expansions[index]?.results ?? [])
+                        .filter(result => {
+                          const text =
+                            `${result.title} ${result.content}`.toLowerCase()
+                          return (
+                            text.includes(company) &&
+                            !text.includes(
+                              identityResolution.current_company_candidate
+                            )
+                          )
+                        })
+                        .map(result => result.url)
+                    })
+                  )
+                : new Set<string>()
+              const mergedResults = [
+                ...interleaveResults(orderedExpansions),
+                ...interleaveResults(
+                  discoveries.map(discovery => discovery.results)
+                ),
+                ...searchResult.results
+              ].filter(
+                (result, index, all) =>
+                  !historicalCandidateUrls.has(result.url) &&
+                  all.findIndex(candidate => candidate.url === result.url) ===
+                    index
+              )
+
+              searchResult = {
+                ...searchResult,
+                results: mergedResults.slice(0, effectiveMaxResults),
+                number_of_results: Math.min(
+                  mergedResults.length,
+                  effectiveMaxResults
+                ),
+                ...(identityResolution && {
+                  identity_resolution: identityResolution
+                })
+              }
+            } else if (discoveryResults.length > 0) {
+              const mergedResults = [
+                ...interleaveResults(
+                  discoveries.map(discovery => discovery.results)
+                ),
+                ...searchResult.results
+              ].filter(
+                (result, index, all) =>
+                  all.findIndex(candidate => candidate.url === result.url) ===
+                  index
+              )
+              searchResult = {
+                ...searchResult,
+                results: mergedResults.slice(0, effectiveMaxResults),
+                number_of_results: Math.min(
+                  mergedResults.length,
+                  effectiveMaxResults
+                )
+              }
+            }
+          }
         }
       } catch (error) {
         console.error('Search API error:', error)
@@ -154,7 +384,7 @@ export function createSearchTool(fullModel: string) {
 
       console.log('completed search')
 
-      logToolPayload('search', query, {
+      logToolPayload('search', filledQuery, {
         results: searchResult.results,
         images: searchResult.images
       })
@@ -162,7 +392,8 @@ export function createSearchTool(fullModel: string) {
       // Yield final results with complete state
       yield {
         state: 'complete' as const,
-        ...searchResult
+        ...searchResult,
+        query: filledQuery
       }
     },
     // Trim the model-facing tool result: citationMap fully duplicates
@@ -180,9 +411,35 @@ export function createSearchTool(fullModel: string) {
       }
       delete modelView.citationMap
       delete modelView.state
+
+      const toolCallId = modelView.toolCallId
+      if (typeof toolCallId === 'string' && Array.isArray(modelView.results)) {
+        modelView.results = modelView.results.map((result, index) =>
+          result && typeof result === 'object'
+            ? {
+                ...(result as Record<string, unknown>),
+                citation: `[${index + 1}](#${toolCallId})`
+              }
+            : result
+        )
+        modelView.citation_instruction =
+          'Copy the citation field from each supporting result exactly after the sentence it supports.'
+      }
       return { type: 'json', value: modelView as JSONValue }
     }
   })
+}
+
+function interleaveResults<T>(groups: T[][]): T[] {
+  const interleaved: T[] = []
+  const longest = Math.max(0, ...groups.map(group => group.length))
+  for (let index = 0; index < longest; index += 1) {
+    for (const group of groups) {
+      const item = group[index]
+      if (item !== undefined) interleaved.push(item)
+    }
+  }
+  return interleaved
 }
 
 // Default export for backward compatibility, using a default model

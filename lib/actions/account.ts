@@ -4,9 +4,8 @@ import { revalidateTag } from 'next/cache'
 
 import { trackAccountDeleted } from '@/lib/analytics'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
+import * as dbActions from '@/lib/insforge/db-actions'
 import { deleteUserObjects } from '@/lib/storage/r2-client'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) {
@@ -30,17 +29,6 @@ export async function deleteAccount(): Promise<{
   const user = await getCurrentUser()
   if (!user) {
     return { success: false, error: 'User not authenticated' }
-  }
-
-  let adminClient: ReturnType<typeof createAdminClient>
-  try {
-    adminClient = createAdminClient()
-  } catch (error) {
-    console.error('Supabase admin client is not configured:', error)
-    return {
-      success: false,
-      error: 'Account deletion is not configured. Set SUPABASE_SECRET_KEY.'
-    }
   }
 
   try {
@@ -81,9 +69,23 @@ export async function deleteAccount(): Promise<{
 
     await deleteUserObjects(user.id)
 
-    const { error } = await adminClient.auth.admin.deleteUser(user.id)
-    if (error) {
-      throw error
+    const baseUrl = process.env.INSFORGE_URL
+    const apiKey = process.env.INSFORGE_API_KEY
+    if (!baseUrl || !apiKey) {
+      throw new Error('InsForge admin auth is not configured')
+    }
+    const deleteResponse = await fetch(`${baseUrl}/api/auth/users`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
+      },
+      body: JSON.stringify({ userIds: [user.id] })
+    })
+    if (!deleteResponse.ok) {
+      throw new Error(
+        `InsForge user deletion failed (${deleteResponse.status})`
+      )
     }
 
     revalidateTag('chat', 'max')

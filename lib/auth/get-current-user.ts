@@ -1,21 +1,34 @@
-import { hasSupabasePublicConfig } from '@/lib/supabase/keys'
-import { createClient } from '@/lib/supabase/server'
+import {
+  createInsForgeServerClient,
+  normalizeInsForgeUser
+} from '@/lib/insforge/auth'
 import { perfLog } from '@/lib/utils/perf-logging'
 import { incrementAuthCallCount } from '@/lib/utils/perf-tracking'
 
 export async function getCurrentUser() {
-  if (!hasSupabasePublicConfig()) {
-    return null // Supabase is not configured
+  try {
+    const insforge = await createInsForgeServerClient()
+    const { data, error } = await insforge.auth.getCurrentUser()
+    if (error) {
+      console.error('InsForge current-user lookup failed:', error)
+      return null
+    }
+    return normalizeInsForgeUser(data?.user)
+  } catch (error) {
+    console.error('InsForge current-user client failed:', error)
+    return null
   }
-
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  return data.user ?? null
 }
 
 export async function getCurrentUserId() {
   const count = incrementAuthCallCount()
   perfLog(`getCurrentUserId called - count: ${count}`)
+
+  // Public brok visitors are real guests: their conversations stay ephemeral
+  // and are never mixed into a shared anonymous account.
+  if (process.env.PUBLIC_GUEST_MODE === 'true') {
+    return undefined
+  }
 
   // Skip authentication mode (for personal Docker deployments)
   if (process.env.ENABLE_AUTH === 'false') {

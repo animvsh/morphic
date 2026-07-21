@@ -30,10 +30,19 @@ const s3Mocks = vi.hoisted(() => {
     }
   }
 
+  class PutObjectCommand {
+    input: unknown
+
+    constructor(input: unknown) {
+      this.input = input
+    }
+  }
+
   return {
     DeleteObjectsCommand,
     GetObjectCommand,
     ListObjectsV2Command,
+    PutObjectCommand,
     S3Client,
     getSignedUrl: vi.fn(),
     send
@@ -44,6 +53,7 @@ vi.mock('@aws-sdk/client-s3', () => ({
   DeleteObjectsCommand: s3Mocks.DeleteObjectsCommand,
   GetObjectCommand: s3Mocks.GetObjectCommand,
   ListObjectsV2Command: s3Mocks.ListObjectsV2Command,
+  PutObjectCommand: s3Mocks.PutObjectCommand,
   S3Client: s3Mocks.S3Client
 }))
 
@@ -58,7 +68,9 @@ const originalEnv = {
   R2_PUBLIC_URL: process.env.R2_PUBLIC_URL,
   R2_SIGNED_URL_EXPIRES_SECONDS: process.env.R2_SIGNED_URL_EXPIRES_SECONDS,
   R2_SECRET_ACCESS_KEY: process.env.R2_SECRET_ACCESS_KEY,
-  S3_ENDPOINT: process.env.S3_ENDPOINT
+  S3_ENDPOINT: process.env.S3_ENDPOINT,
+  INSFORGE_STORAGE_API_KEY: process.env.INSFORGE_STORAGE_API_KEY,
+  INSFORGE_STORAGE_URL: process.env.INSFORGE_STORAGE_URL
 }
 
 async function importR2Client() {
@@ -79,6 +91,8 @@ describe('R2 client', () => {
     process.env.R2_SIGNED_URL_EXPIRES_SECONDS = '3600'
     process.env.S3_ENDPOINT = 'https://r2.example.com'
     delete process.env.R2_ACCOUNT_ID
+    delete process.env.INSFORGE_STORAGE_API_KEY
+    delete process.env.INSFORGE_STORAGE_URL
   })
 
   afterEach(() => {

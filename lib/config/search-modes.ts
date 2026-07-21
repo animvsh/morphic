@@ -16,15 +16,15 @@ export interface SearchModeConfig {
 export const SEARCH_MODE_CONFIGS: SearchModeConfig[] = [
   {
     value: 'quick',
-    label: 'Quick',
-    description: 'Streamlined search for fast, concise responses',
+    label: 'deep search',
+    description: 'search the web for a grounded answer',
     icon: Search,
     color: 'text-amber-500'
   },
   {
     value: 'adaptive',
-    label: 'Adaptive',
-    description: 'Adaptive agentic search with intelligent query understanding',
+    label: 'reason',
+    description: 'let brok decide when to search and think deeper',
     icon: IconLogoOutline,
     color: 'text-violet-500'
   }

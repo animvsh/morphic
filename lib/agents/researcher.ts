@@ -4,8 +4,13 @@ import type { ResearcherTools } from '@/lib/types/agent'
 import { type Model } from '@/lib/types/models'
 
 import { fetchTool } from '../tools/fetch'
+import {
+  extractAchievementPersonAnchor,
+  type IdentityResolution
+} from '../tools/identity-resolution'
 import { createQuestionTool } from '../tools/question'
 import { createSearchTool } from '../tools/search'
+import { extractPersonAnchor } from '../tools/search-query-grounding'
 import { createTodoTools } from '../tools/todo'
 import { SearchMode } from '../types/search'
 import { getModel } from '../utils/registry'
@@ -70,19 +75,36 @@ function wrapSearchToolForQuickMode<
 export function createResearcher({
   model,
   modelConfig,
-  searchMode = 'adaptive'
+  searchMode = 'adaptive',
+  searchContext
 }: {
   model: string
   modelConfig?: Model
   searchMode?: SearchMode
+  searchContext?: string
 }) {
   try {
     const currentDate = new Date().toLocaleString()
+    let latestIdentityResolution: IdentityResolution | undefined
 
     // Create model-specific tools with proper typing
-    const originalSearchTool = createSearchTool(model)
+    const originalSearchTool = createSearchTool(
+      model,
+      searchContext,
+      resolution => {
+        latestIdentityResolution = resolution
+      }
+    )
     const askQuestionTool = createQuestionTool(model)
     const todoTools = createTodoTools()
+    const personAnchor =
+      extractPersonAnchor(searchContext) ??
+      extractAchievementPersonAnchor(searchContext)
+    const needsIdentityFinalCheck =
+      !!personAnchor &&
+      /\b(?:current\s+company|founder|co-?founder|what\s+company|company\s+does|currently\s+runs?)\b/i.test(
+        searchContext ?? ''
+      )
 
     let systemPrompt: string
     let activeToolsList: (keyof ResearcherTools)[] = []
@@ -122,12 +144,29 @@ export function createResearcher({
     } as ResearcherTools
 
     // Create ToolLoopAgent with all configuration
+    const instructions = `${systemPrompt}\nCurrent date and time: ${currentDate}`
     const agent = new ToolLoopAgent({
       model: getModel(model),
-      instructions: `${systemPrompt}\nCurrent date and time: ${currentDate}`,
+      instructions,
       tools,
       activeTools: activeToolsList,
       stopWhen: stepCountIs(maxSteps),
+      prepareStep: () =>
+        !personAnchor
+          ? undefined
+          : {
+              system: `${instructions}\n\n${
+                needsIdentityFinalCheck && latestIdentityResolution
+                  ? `IDENTITY RESOLUTION (DETERMINISTIC DATED-SOURCE COMPARISON; MUST FOLLOW): ${JSON.stringify(latestIdentityResolution)}`
+                  : needsIdentityFinalCheck
+                    ? 'IDENTITY RESOLUTION: No deterministic dated-source comparison is available yet; do not guess.'
+                    : `PERSON ATTRIBUTION TARGET: ${personAnchor}. Do not force a company summary unless the user asked for it.`
+              }\n\nPERSON ATTRIBUTION FINAL CHECK: A personal achievement, award, hackathon placement, project, or teammate is allowed only when one cited result contains the exact person's name in the same local evidence block as that exact claim. On a page listing multiple teams or winners, use only the winner section containing ${personAnchor}; never join an adjacent track, project, or teammate list to him. If the source names a different team, omit that claim. Do not add incidental roles or affiliations the user did not ask for.\n\n${
+                needsIdentityFinalCheck
+                  ? 'COMPANY IDENTITY FINAL CHECK: Name the evidence-resolved current company, explain in one concrete sentence what its product connects or does and the user outcome, correct any stale company premise briefly, and omit all unrequested historical product copy.'
+                  : 'SCOPE CHECK: Answer only the requested identity facts. Do not append a general company, school, fellowship, or biography section.'
+              } Every cited claim must use Morphic's clickable syntax [result number](#exactToolCallId); never emit bare [1] markers. If the evidence cannot support a claim, say exactly what remains unverified instead of substituting a nearby result.`
+            },
       ...(modelConfig?.providerOptions && {
         providerOptions: modelConfig.providerOptions
       }),

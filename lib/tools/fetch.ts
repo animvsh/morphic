@@ -7,6 +7,21 @@ import { logToolPayload } from '@/lib/utils/usage-logging'
 const CONTENT_CHARACTER_LIMIT = 50000
 const TITLE_CHARACTER_LIMIT = 100
 
+function unavailableResult(url: string): SearchResultsType {
+  return {
+    query: url,
+    images: [],
+    results: [
+      {
+        title: 'Page unavailable',
+        url,
+        content:
+          'This page could not be retrieved. Do not use it as evidence; rely on a different accessible source or the search result snippet.'
+      }
+    ]
+  }
+}
+
 async function fetchRegularData(url: string): Promise<SearchResultsType> {
   try {
     const controller = new AbortController()
@@ -172,15 +187,27 @@ export const fetchTool = tool({
     let results: SearchResultsType
 
     if (type === 'regular') {
-      // Use regular fetch for direct HTML retrieval
-      results = await fetchRegularData(url)
+      // A blocked page should not terminate the whole research stream. Search
+      // snippets may still be usable, so return an explicit non-evidence result
+      // and let the agent continue with other sources.
+      try {
+        results = await fetchRegularData(url)
+      } catch {
+        results = unavailableResult(url)
+      }
     } else {
       // Use API-based extraction (Jina or Tavily)
-      const useJina = process.env.JINA_API_KEY
-      if (useJina) {
-        results = await fetchJinaReaderData(url)
-      } else {
-        results = await fetchTavilyExtractData(url)
+      try {
+        const useJina = process.env.JINA_API_KEY
+        if (useJina) {
+          results = await fetchJinaReaderData(url)
+        } else {
+          results = await fetchTavilyExtractData(url)
+        }
+      } catch {
+        // Tool failures are evidence failures, not conversation failures. Keep
+        // the agent alive so it can use another result or explain the gap.
+        results = unavailableResult(url)
       }
     }
 

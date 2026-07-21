@@ -8,6 +8,7 @@ import {
 } from 'ai'
 
 import { researcher } from '@/lib/agents/researcher'
+import { removeRawFilesFromModelMessages } from '@/lib/attachments/message-context'
 import {
   createPublicErrorResponse,
   serializePublicError
@@ -25,9 +26,11 @@ import { getTextFromParts } from '../utils/message-utils'
 import { perfLog, perfTime } from '../utils/perf-logging'
 import { isUsageLogging, logUsage } from '../utils/usage-logging'
 
+import { buildResearchSearchContext } from './helpers/build-research-search-context'
 import { convertDataPart } from './helpers/convert-data-part'
 import { persistStreamResults } from './helpers/persist-stream-results'
 import { prepareMessages } from './helpers/prepare-messages'
+import { reinforceConversationContext } from './helpers/reinforce-conversation-context'
 import { stripReasoningParts } from './helpers/strip-reasoning-parts'
 import { stripSpecFromMessages } from './helpers/strip-spec-from-messages'
 import type { StreamContext } from './helpers/types'
@@ -121,14 +124,17 @@ export async function createChatStreamResponse(
       const researchAgent = researcher({
         model: context.modelId,
         modelConfig: model,
-        searchMode
+        searchMode,
+        searchContext: buildResearchSearchContext(messagesToModel)
       })
 
       // For OpenAI models, strip reasoning parts from UIMessages before conversion
       // OpenAI's Responses API requires reasoning items and their following items to be kept together
       // See: https://github.com/vercel/ai/issues/11036
       const isOpenAI = context.modelId.startsWith('openai:')
-      const messagesWithoutSpec = stripSpecFromMessages(messagesToModel)
+      const messagesWithoutSpec = stripSpecFromMessages(
+        removeRawFilesFromModelMessages(messagesToModel)
+      )
       const messagesToConvert = isOpenAI
         ? stripReasoningParts(messagesWithoutSpec)
         : messagesWithoutSpec
@@ -145,6 +151,7 @@ export async function createChatStreamResponse(
         toolCalls: 'before-last-2-messages',
         emptyMessages: 'remove'
       })
+      modelMessages = reinforceConversationContext(modelMessages)
 
       if (shouldTruncateMessages(modelMessages, model)) {
         const maxTokens = getMaxAllowedTokens(model)
@@ -176,7 +183,10 @@ export async function createChatStreamResponse(
         `researchAgent.stream - Start: model=${context.modelId}, searchMode=${searchMode}`
       )
       const result = await researchAgent.stream({
-        messages: modelMessages,
+        // Pass the complete conversation as the agent prompt. With the current
+        // AI SDK ToolLoopAgent, using the `messages` alias here can collapse to
+        // the latest user turn for OpenAI-compatible providers.
+        prompt: modelMessages,
         abortSignal,
         experimental_transform: smoothStream({ chunking: 'word' }),
         ...(isUsageLogging() && {

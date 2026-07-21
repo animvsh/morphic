@@ -2,12 +2,18 @@ import {
   DeleteObjectsCommand,
   GetObjectCommand,
   ListObjectsV2Command,
+  PutObjectCommand,
   S3Client
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
+import { createClient } from '@insforge/sdk'
+
+import 'server-only'
 
 export const R2_BUCKET_NAME = process.env.R2_BUCKET_NAME || 'user-uploads'
 export const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || ''
+export const INSFORGE_STORAGE_BUCKET =
+  process.env.INSFORGE_STORAGE_BUCKET || 'brok-uploads'
 const DEFAULT_SIGNED_URL_EXPIRES_SECONDS = 60 * 60
 const configuredSignedUrlExpiresSeconds = Number(
   process.env.R2_SIGNED_URL_EXPIRES_SECONDS
@@ -19,6 +25,7 @@ export const R2_SIGNED_URL_EXPIRES_SECONDS =
     : DEFAULT_SIGNED_URL_EXPIRES_SECONDS
 
 let _r2Client: S3Client | null = null
+let _insForgeStorageClient: ReturnType<typeof createClient> | null = null
 
 type SignFilePartUrlsOptions = {
   allowedKeyPrefix?: string
@@ -60,12 +67,43 @@ export function getR2Client(): S3Client {
 }
 
 export function isObjectStorageConfigured() {
+  if (isInsForgeStorageConfigured()) return true
+
   const hasCredentials =
     !!process.env.R2_ACCESS_KEY_ID && !!process.env.R2_SECRET_ACCESS_KEY
   const hasEndpointOrAccount =
     !!process.env.S3_ENDPOINT || !!process.env.R2_ACCOUNT_ID
 
   return hasCredentials && hasEndpointOrAccount
+}
+
+export function isInsForgeStorageConfigured() {
+  return Boolean(
+    process.env.INSFORGE_STORAGE_URL && process.env.INSFORGE_STORAGE_API_KEY
+  )
+}
+
+function getInsForgeStorageClient() {
+  if (_insForgeStorageClient) return _insForgeStorageClient
+
+  const baseUrl = process.env.INSFORGE_STORAGE_URL
+  const apiKey = process.env.INSFORGE_STORAGE_API_KEY
+  if (!baseUrl || !apiKey) {
+    throw new Error(
+      'InsForge storage is not configured. Set INSFORGE_STORAGE_URL and INSFORGE_STORAGE_API_KEY.'
+    )
+  }
+
+  _insForgeStorageClient = createClient({
+    baseUrl,
+    headers: { 'x-api-key': apiKey },
+    isServerMode: true
+  })
+  return _insForgeStorageClient
+}
+
+function getInsForgeBucket() {
+  return getInsForgeStorageClient().storage.from(INSFORGE_STORAGE_BUCKET)
 }
 
 function normalizeObjectKey(key: string) {
@@ -99,6 +137,17 @@ export async function getSignedFileUrl(
     throw new Error('Cannot sign an empty object key')
   }
 
+  if (isInsForgeStorageConfigured()) {
+    const { data, error } = await getInsForgeBucket().createSignedUrl(
+      normalizedKey,
+      expiresIn
+    )
+    if (error || !data?.signedUrl) {
+      throw error || new Error('InsForge did not return a signed file URL')
+    }
+    return data.signedUrl
+  }
+
   return getSignedUrl(
     getR2Client(),
     new GetObjectCommand({
@@ -106,6 +155,74 @@ export async function getSignedFileUrl(
       Key: normalizedKey
     }),
     { expiresIn }
+  )
+}
+
+export async function uploadFileObject(key: string, file: File) {
+  const normalizedKey = normalizeObjectKey(key)
+  if (!normalizedKey) throw new Error('Cannot upload an empty object key')
+
+  if (isInsForgeStorageConfigured()) {
+    const { data, error } = await getInsForgeBucket().upload(
+      normalizedKey,
+      file
+    )
+    if (error) throw error
+    return data
+  }
+
+  await getR2Client().send(
+    new PutObjectCommand({
+      Bucket: R2_BUCKET_NAME,
+      Key: normalizedKey,
+      Body: Buffer.from(await file.arrayBuffer()),
+      ContentType: file.type,
+      CacheControl: 'max-age=3600'
+    })
+  )
+  return { key: normalizedKey }
+}
+
+export async function uploadTextObject(key: string, text: string) {
+  const filename = key.split('/').pop() || 'attachment-context.txt'
+  const bytes = Uint8Array.from(Buffer.from(text, 'utf8'))
+  return uploadFileObject(
+    key,
+    new File([bytes], filename, { type: 'text/plain; charset=utf-8' })
+  )
+}
+
+export async function downloadObjectText(key: string) {
+  const normalizedKey = normalizeObjectKey(key)
+  if (!normalizedKey) throw new Error('Cannot download an empty object key')
+
+  if (isInsForgeStorageConfigured()) {
+    const { data, error } = await getInsForgeBucket().download(normalizedKey)
+    if (error || !data) throw error || new Error('File download returned empty')
+    return data.text()
+  }
+
+  const response = await getR2Client().send(
+    new GetObjectCommand({ Bucket: R2_BUCKET_NAME, Key: normalizedKey })
+  )
+  return response.Body?.transformToString() || ''
+}
+
+export async function deleteFileObject(key: string) {
+  const normalizedKey = normalizeObjectKey(key)
+  if (!normalizedKey) return
+
+  if (isInsForgeStorageConfigured()) {
+    const { error } = await getInsForgeBucket().remove(normalizedKey)
+    if (error) throw error
+    return
+  }
+
+  await getR2Client().send(
+    new DeleteObjectsCommand({
+      Bucket: R2_BUCKET_NAME,
+      Delete: { Objects: [{ Key: normalizedKey }], Quiet: true }
+    })
   )
 }
 
@@ -157,6 +274,30 @@ export async function signFilePartUrlsInMessages<T extends { parts?: any[] }>(
 export async function deleteObjectsByPrefix(prefix: string) {
   if (!isObjectStorageConfigured()) {
     return { deletedCount: 0, skipped: true }
+  }
+
+  if (isInsForgeStorageConfigured()) {
+    const bucket = getInsForgeBucket()
+    let offset = 0
+    let deletedCount = 0
+
+    while (true) {
+      const { data, error } = await bucket.list({ prefix, limit: 100, offset })
+      if (error) throw error
+      const objects = data?.objects ?? []
+      if (objects.length === 0) break
+
+      for (const object of objects) {
+        const { error: deleteError } = await bucket.remove(object.key)
+        if (deleteError) throw deleteError
+        deletedCount += 1
+      }
+
+      if (objects.length < 100) break
+      offset += objects.length
+    }
+
+    return { deletedCount, skipped: false }
   }
 
   const r2Client = getR2Client()

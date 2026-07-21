@@ -8,6 +8,7 @@ import {
   trackChatEvent
 } from '@/lib/analytics'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import { resolveGuestRequestMessages } from '@/lib/chat/request-contract'
 import { generateId } from '@/lib/db/schema'
 import { checkAndEnforceAdaptiveLimit } from '@/lib/rate-limit/adaptive-limit'
 import { checkAndEnforceOverallChatLimit } from '@/lib/rate-limit/chat-limits'
@@ -168,7 +169,7 @@ export async function POST(req: Request) {
 
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
-          messages: Array.isArray(messages) ? messages : [],
+          messages: resolveGuestRequestMessages(messages, message),
           model: selectedModel,
           abortSignal,
           searchMode,

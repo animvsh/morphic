@@ -32,6 +32,12 @@ export type UIDataTypes = {
   quotedContext?: { text: string }
   noteContext?: { title?: string; text: string }
   sourceUrl?: { url: string }
+  attachmentContext?: {
+    key: string
+    filename?: string
+    mediaType?: string
+    text: string
+  }
 }
 
 // Create todo tools instance for type inference

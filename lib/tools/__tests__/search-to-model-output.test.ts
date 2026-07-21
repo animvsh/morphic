@@ -47,11 +47,21 @@ describe('search tool toModelOutput', () => {
   it('preserves the fields the model needs to answer and to cite', async () => {
     const value = await getModelValue(fullOutput)
 
-    expect(value.results).toEqual(fullOutput.results)
+    expect(value.results).toEqual([
+      {
+        ...fullOutput.results[0],
+        citation: '[1](#call_123)'
+      },
+      {
+        ...fullOutput.results[1],
+        citation: '[2](#call_123)'
+      }
+    ])
     expect(value.query).toBe('test query')
     expect(value.number_of_results).toBe(2)
     // toolCallId is required: the prompt cites as [number](#toolCallId).
     expect(value.toolCallId).toBe('call_123')
+    expect(value.citation_instruction).toContain('Copy the citation field')
   })
 
   it('keeps images so the model can embed inline image specs', async () => {
@@ -69,6 +79,7 @@ describe('search tool toModelOutput', () => {
 
     expect(fullOutput).toHaveProperty('citationMap')
     expect(fullOutput).toHaveProperty('state')
+    expect(fullOutput.results[0]).not.toHaveProperty('citation')
   })
 
   it('handles non-object output defensively', async () => {

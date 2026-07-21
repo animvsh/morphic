@@ -8,6 +8,7 @@ import type {
   UITools
 } from '@/lib/types/ai'
 import type { DynamicToolPart } from '@/lib/types/dynamic-tools'
+import { stripThinkBlocks } from '@/lib/utils/model-output'
 
 import { AnswerSection } from './answer-section'
 import { DynamicToolDisplay } from './dynamic-tool-display'
@@ -53,7 +54,7 @@ export function RenderMessage({
   const isNonEmptyTextPart = (part: any) =>
     part?.type === 'text' &&
     typeof part.text === 'string' &&
-    part.text.trim().length > 0
+    stripThinkBlocks(part.text).length > 0
 
   // Use provided citation maps (from all messages)
   if (message.role === 'user') {
@@ -159,16 +160,28 @@ export function RenderMessage({
 
       const remainingParts = message.parts?.slice(index + 1) || []
       const hasMoreTextParts = remainingParts.some(isNonEmptyTextPart)
+
+      // Agent providers may emit short planning or transition text between
+      // tool calls. Only the final text part is the user-facing answer.
+      if (hasMoreTextParts) {
+        return
+      }
+
       const isLastTextPart = !hasMoreTextParts
       const isStreamingComplete =
         status !== 'streaming' && status !== 'submitted'
       const shouldShowActions =
         isLastTextPart && (isLatestMessage ? isStreamingComplete : true)
 
+      const userFacingContent = stripThinkBlocks(part.text)
+      if (!userFacingContent) {
+        return
+      }
+
       elements.push(
         <AnswerSection
           key={`${messageId}-text-${index}`}
-          content={part.text}
+          content={userFacingContent}
           isOpen={getIsOpen(
             messageId,
             part.type,

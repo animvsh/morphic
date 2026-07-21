@@ -11,6 +11,9 @@
 
 # next.js
 /.next/
+/.open-next/
+/cloudflare/dist/
+/.wrangler/
 /out/
 
 # production
@@ -27,6 +30,7 @@ yarn-error.log*
 
 # local env files
 .env*.local
+.dev.vars
 
 # vercel
 .vercel
@@ -37,3 +41,18 @@ next-env.d.ts
 
 # temporary files
 .tmp/
+# InsForge & AI agent skills
+.insforge
+.agent
+.agents
+.augment
+.claude
+.cline
+.github/copilot*
+.kilocode
+.qoder
+.qwen
+.roo
+.trae
+.windsurf
+.gstack/

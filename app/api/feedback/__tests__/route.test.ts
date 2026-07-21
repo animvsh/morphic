@@ -10,17 +10,6 @@ vi.mock('next/headers', () => ({
   }))
 }))
 
-// Mock Supabase
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(() => ({
-    auth: {
-      getUser: vi.fn(() =>
-        Promise.resolve({ data: { user: null }, error: null })
-      )
-    }
-  }))
-}))
-
 // Mock the modules
 vi.mock('@/lib/actions/feedback', () => ({
   updateMessageFeedback: vi.fn()

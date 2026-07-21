@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
+import * as dbActions from '@/lib/insforge/db-actions'
 
 import { deleteNote, getNote, listNotes, saveNote } from '../notes'
 
 vi.mock('@/lib/auth/get-current-user')
-vi.mock('@/lib/db/actions')
+vi.mock('@/lib/insforge/db-actions')
 
 const originalEnableAuth = process.env.ENABLE_AUTH
 

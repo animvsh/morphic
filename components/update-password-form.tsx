@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-import { createClient } from '@/lib/supabase/client'
+import { resetPasswordAction } from '@/lib/actions/auth'
 import { cn } from '@/lib/utils/index'
 
 import { Button } from '@/components/ui/button'
@@ -22,19 +22,20 @@ export function UpdatePasswordForm({
   ...props
 }: React.ComponentPropsWithoutRef<'div'>) {
   const [password, setPassword] = useState('')
+  const [email, setEmail] = useState('')
+  const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    const supabase = createClient()
     setIsLoading(true)
     setError(null)
 
     try {
-      const { error } = await supabase.auth.updateUser({ password })
-      if (error) throw error
+      const result = await resetPasswordAction(email, code, password)
+      if (!result.success) throw new Error(result.error)
       // Redirect to root and refresh to ensure server components get updated session.
       router.push('/')
       router.refresh()
@@ -57,6 +58,28 @@ export function UpdatePasswordForm({
         <CardContent>
           <form onSubmit={handleForgotPassword}>
             <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="code">6-digit reset code</Label>
+                <Input
+                  id="code"
+                  inputMode="numeric"
+                  placeholder="123456"
+                  required
+                  value={code}
+                  onChange={e => setCode(e.target.value)}
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">New password</Label>
                 <Input

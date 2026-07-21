@@ -1,8 +1,8 @@
 'use server'
 
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
 import type { Note } from '@/lib/db/schema'
+import * as dbActions from '@/lib/insforge/db-actions'
 import { stripMarkdownText } from '@/lib/utils/markdown'
 
 const MAX_TITLE_LENGTH = 120

@@ -56,6 +56,12 @@ function sortModels(models: Model[]): Model[] {
   return [...models].sort((a, b) => a.name.localeCompare(b.name))
 }
 
+function getOpenAICompatibleModelName(id: string): string {
+  if (id === 'MiniMax-M2.7-highspeed') return 'brok fast'
+  if (id === 'MiniMax-M2.7') return 'brok'
+  return id
+}
+
 function dedupeModels(models: Model[]): Model[] {
   const seen = new Set<string>()
   const deduped: Model[] = []
@@ -340,7 +346,7 @@ export async function fetchOpenAICompatibleModels(): Promise<Model[]> {
           .filter(Boolean)
           .map(id => ({
             id,
-            name: id,
+            name: getOpenAICompatibleModelName(id),
             provider: providerName,
             providerId: 'openai-compatible'
           }))
@@ -368,7 +374,7 @@ export async function fetchOpenAICompatibleModels(): Promise<Model[]> {
           .filter(passesOpenAICompatibleFilters)
           .map(id => ({
             id,
-            name: id,
+            name: getOpenAICompatibleModelName(id),
             provider: providerName,
             providerId: 'openai-compatible'
           }))

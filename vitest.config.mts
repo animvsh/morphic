@@ -9,10 +9,13 @@ process.env.DATABASE_URL =
 export default defineConfig({
   plugins: [react()],
   resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './'),
-      'zod/v4': 'zod'
-    }
+    alias: [
+      { find: '@', replacement: path.resolve(__dirname, './') },
+      {
+        find: 'server-only',
+        replacement: path.resolve(__dirname, './test/server-only.ts')
+      }
+    ]
   },
   test: {
     globals: true,

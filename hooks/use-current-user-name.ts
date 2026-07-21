@@ -1,26 +1,11 @@
-import { useEffect, useState } from 'react'
-
-import { createClient } from '@/lib/supabase/client'
+import { useAppUser } from '@/lib/contexts/user-context'
 
 export const useCurrentUserName = () => {
-  const [name, setName] = useState<string | null>(null)
-
-  useEffect(() => {
-    const fetchProfileName = async () => {
-      try {
-        const { data, error } = await createClient().auth.getSession()
-        if (error) {
-          console.error(error)
-        }
-        setName(data.session?.user.user_metadata.full_name ?? '?')
-      } catch (error) {
-        // Supabase not configured
-        setName('Anonymous')
-      }
-    }
-
-    fetchProfileName()
-  }, [])
-
-  return name || '?'
+  const user = useAppUser()
+  return String(
+    user?.user_metadata.full_name ??
+      user?.user_metadata.name ??
+      user?.email ??
+      '?'
+  )
 }

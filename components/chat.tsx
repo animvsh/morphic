@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 
 import { summarizeGenui } from '@/lib/analytics/genui-summary'
 import { captureClient, getDistinctId } from '@/lib/analytics/posthog-client'
+import { buildChatRequestBody } from '@/lib/chat/request-contract'
 import { ChatProvider } from '@/lib/contexts/chat-context'
 import { generateId } from '@/lib/db/schema'
 import {
@@ -143,32 +144,15 @@ export function Chat({
     transport: new DefaultChatTransport({
       api: '/api/chat',
       prepareSendMessagesRequest: ({ messages, trigger, messageId }) => {
-        // Simplify by passing AI SDK's default trigger values directly
-        const lastMessage = messages[messages.length - 1]
-        const messageToRegenerate =
-          trigger === 'regenerate-message'
-            ? messages.find(m => m.id === messageId)
-            : undefined
-
         return {
-          body: {
-            trigger, // Use AI SDK's default trigger value directly
-            chatId: chatId,
+          body: buildChatRequestBody({
+            messages,
+            trigger,
             messageId,
+            chatId,
             analyticsId: getDistinctId(),
-            ...(isGuest ? { messages } : {}),
-            message:
-              trigger === 'regenerate-message' &&
-              messageToRegenerate?.role === 'user'
-                ? messageToRegenerate
-                : trigger === 'submit-message'
-                  ? lastMessage
-                  : undefined,
-            isNewChat:
-              trigger === 'submit-message' &&
-              messages.length === 1 &&
-              savedMessages.length === 0
-          }
+            savedMessageCount: savedMessages.length
+          })
         }
       }
     }),

@@ -55,5 +55,28 @@ export function convertDataPart(part: {
     return url ? { type: 'text', text: url } : undefined
   }
 
+  if (part.type === 'data-attachmentContext') {
+    const data = part.data as
+      | {
+          filename?: unknown
+          mediaType?: unknown
+          text?: unknown
+        }
+      | undefined
+    const text = typeof data?.text === 'string' ? data.text : ''
+    if (!text) return undefined
+    const filename =
+      typeof data?.filename === 'string' ? data.filename : 'attachment'
+    const mediaType =
+      typeof data?.mediaType === 'string'
+        ? data.mediaType
+        : 'application/octet-stream'
+    const nonce = randomUUID().slice(0, 8)
+    return {
+      type: 'text',
+      text: `[attachment-context ${nonce}]\nFilename: ${filename}\nMedia type: ${mediaType}\n\n${text}\n[/attachment-context ${nonce}]`
+    }
+  }
+
   return undefined
 }
