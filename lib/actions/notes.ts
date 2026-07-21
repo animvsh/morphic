@@ -1,8 +1,9 @@
 'use server'
 
+import { getAccountControl } from '@/lib/admin/account-control'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
 import type { Note } from '@/lib/db/schema'
+import * as dbActions from '@/lib/insforge/db-actions'
 import { stripMarkdownText } from '@/lib/utils/markdown'
 
 const MAX_TITLE_LENGTH = 120
@@ -43,6 +44,11 @@ async function requireNoteUserId() {
   const userId = await getCurrentUserId()
   if (!userId) {
     return { userId: null, error: 'Sign in to save notes.' }
+  }
+
+  const control = await getAccountControl(userId)
+  if (control.status !== 'active') {
+    return { userId: null, error: 'This account is suspended.' }
   }
 
   return { userId, error: null }

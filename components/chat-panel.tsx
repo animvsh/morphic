@@ -47,7 +47,6 @@ import { useArtifact } from './artifact/artifact-context'
 import { useLibrary } from './library/library-context'
 import { LibraryPickerDialog } from './library/library-picker-dialog'
 import { Button } from './ui/button'
-import { IconBlinkingLogo } from './ui/icons'
 import {
   Tooltip,
   TooltipContent,
@@ -431,18 +430,24 @@ export function ChatPanel({
   return (
     <div
       className={cn(
-        'w-full bg-background group/form-container shrink-0',
+        'w-full group/form-container shrink-0',
         messages.length > 0
-          ? 'sticky bottom-0 px-2 pb-2 md:pb-4'
-          : 'px-4 md:px-6'
+          ? 'sticky bottom-0 bg-background/90 px-2 pb-2 backdrop-blur-xl md:pb-4'
+          : 'bg-transparent px-4 pb-[8vh] md:px-8'
       )}
     >
       {messages.length === 0 && (
-        <div className="mb-6 md:mb-10 flex flex-col items-center gap-2 md:gap-4">
-          <IconBlinkingLogo className="size-12" />
-          <h1 className="text-xl md:text-2xl font-medium text-foreground">
-            What would you like to know?
+        <div className="mb-7 flex flex-col items-center gap-3 md:mb-9">
+          <span
+            className="size-12 rounded-[14px] bg-black shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_10px_24px_rgba(0,0,0,0.12)]"
+            aria-label="brok logo"
+          />
+          <h1 className="max-w-2xl text-center text-[clamp(1.65rem,4vw,2.35rem)] font-semibold lowercase leading-[1.08] tracking-[-0.045em] text-black">
+            brok — ai that&apos;s affordable. like, really affordable.
           </h1>
+          <p className="text-sm lowercase text-black/45">
+            what can i help with?
+          </p>
         </div>
       )}
       {uploadedFiles.length > 0 && (
@@ -552,7 +557,7 @@ export function ChatPanel({
           setIsInputFocused(false)
           inputRef.current?.blur()
         }}
-        className={cn('max-w-full md:max-w-3xl w-full mx-auto relative')}
+        className={cn('relative mx-auto w-full max-w-[900px]')}
       >
         {/* Scroll to bottom button */}
         {messages.length > 0 && (
@@ -592,9 +597,11 @@ export function ChatPanel({
 
         <div
           className={cn(
-            'relative flex w-full flex-col gap-2 rounded-3xl border border-input bg-muted transition-[box-shadow] duration-[140ms] ease-[var(--motion-ease-out)]',
+            'relative flex w-full flex-col gap-2 rounded-[28px] border border-black/[0.08] bg-white transition-[box-shadow] duration-[140ms] ease-[var(--motion-ease-out)]',
+            messages.length === 0 &&
+              'shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_12px_32px_rgba(20,20,18,0.08)]',
             isInputFocused &&
-              'ring-1 ring-ring/20 ring-offset-1 ring-offset-background/50'
+              'shadow-[0_0_0_3px_rgba(0,0,0,0.045),0_14px_36px_rgba(20,20,18,0.1)]'
           )}
         >
           {contentCards.length > 0 && (
@@ -758,11 +765,14 @@ export function ChatPanel({
             onCompositionEnd={handleCompositionEnd}
             onFocus={() => setIsInputFocused(true)}
             onBlur={() => setIsInputFocused(false)}
-            placeholder={messages.length > 0 ? 'Reply...' : 'Ask anything...'}
+            placeholder={messages.length > 0 ? 'reply...' : 'ask anything'}
             spellCheck={false}
             value={input}
             disabled={isLoading || isToolInvocationInProgress()}
-            className="resize-none w-full min-h-12 bg-transparent border-0 p-3 md:p-4 text-sm placeholder:text-muted-foreground focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50"
+            className={cn(
+              'w-full resize-none border-0 bg-transparent px-4 text-sm text-black placeholder:text-black/38 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 md:px-5',
+              messages.length === 0 ? 'min-h-24 pb-3 pt-5' : 'min-h-12 py-3'
+            )}
             onChange={handleInputChange}
             onPaste={e => {
               const text = e.clipboardData.getData('text')
@@ -967,7 +977,7 @@ export function ChatPanel({
               inputRef.current?.focus()
             }}
             inputRef={inputRef}
-            className="mt-2 hidden md:block"
+            className="mt-3"
           />
         )}
       </form>

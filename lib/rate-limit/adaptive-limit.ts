@@ -40,9 +40,10 @@ interface AdaptiveLimitCheckResult {
 }
 
 async function checkAdaptiveLimit(
-  userId: string
+  userId: string,
+  limitOverride?: number
 ): Promise<AdaptiveLimitCheckResult> {
-  const limit = getAdaptiveDailyLimit()
+  const limit = limitOverride ?? getAdaptiveDailyLimit()
 
   if (process.env.MORPHIC_CLOUD_DEPLOYMENT !== 'true') {
     return {
@@ -115,9 +116,10 @@ async function checkAdaptiveLimit(
  * Returns a 429 Response if the limit is reached, null otherwise.
  */
 export async function checkAndEnforceAdaptiveLimit(
-  userId: string
+  userId: string,
+  limitOverride?: number
 ): Promise<Response | null> {
-  const result = await checkAdaptiveLimit(userId)
+  const result = await checkAdaptiveLimit(userId, limitOverride)
 
   // Only emit analytics for real (Redis-backed) checks. Local dev / cloud
   // without Upstash returns enforced=false and we skip tracking to avoid

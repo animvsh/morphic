@@ -7,6 +7,7 @@ import {
   loadChat,
   upsertMessage
 } from '@/lib/actions/chat'
+import { hydrateAttachmentContexts } from '@/lib/attachments/message-context'
 import { generateId } from '@/lib/db/schema'
 import {
   getUserFileObjectKeyPrefix,
@@ -87,10 +88,11 @@ export async function prepareMessages(
       throw new Error('No message provided')
     }
 
+    const hydratedParts = await hydrateAttachmentContexts(message.parts, userId)
     const messageWithId = {
       ...message,
       id: message.id || generateId(),
-      parts: await signFilePartUrls(message.parts, {
+      parts: await signFilePartUrls(hydratedParts, {
         allowedKeyPrefix: getUserFileObjectKeyPrefix(userId)
       })
     }

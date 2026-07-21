@@ -326,13 +326,15 @@ export function ResearchProcessSection({
 
         // Count total parts in this segment
         const totalParts = seg.length
-        const needsParentCollapsible = totalParts >= 5
+        // Keep working notes and tool calls available without putting them in
+        // front of the answer by default.
+        const needsParentCollapsible = hasSubsequentText || totalParts >= 5
 
         // Parent collapsible ID
         const parentId = `${messageId}-parent-${sidx}`
-        // If user has explicitly set state, use that; otherwise auto-collapse when text follows
-        const isParentOpen =
-          parentOpenStates[parentId] ?? (hasSubsequentText ? false : true)
+        // Default closed even while streaming so private working notes never
+        // flash in front of the user.
+        const isParentOpen = parentOpenStates[parentId] ?? false
 
         const segmentContent = (
           <div className={containerClass}>
@@ -384,7 +386,7 @@ export function ResearchProcessSection({
                 >
                   <Waypoints className="size-4 text-muted-foreground group-hover:text-muted-foreground/70" />
                   <span className="font-medium text-muted-foreground group-hover:text-muted-foreground/70">
-                    Research Process ({totalParts} steps)
+                    research ({totalParts} steps)
                   </span>
                   <ChevronDown
                     className={cn(

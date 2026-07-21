@@ -1,10 +1,8 @@
 'use server'
 
-import { db } from '@/lib/db'
-import { feedback, generateId } from '@/lib/db/schema'
-import { withOptionalRLS } from '@/lib/db/with-rls'
-import { hasSupabasePublicConfig } from '@/lib/supabase/keys'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { generateId } from '@/lib/db/schema'
+import { getInsForgeAdminClient } from '@/lib/insforge/admin'
 
 export async function submitFeedback(data: {
   sentiment: 'positive' | 'neutral' | 'negative'
@@ -16,34 +14,28 @@ export async function submitFeedback(data: {
     let userId: string | undefined
     let userEmail: string | undefined
 
-    if (hasSupabasePublicConfig()) {
-      const supabase = await createClient()
-      const {
-        data: { user }
-      } = await supabase.auth.getUser()
-      userId = user?.id
-      userEmail = user?.email
-    }
+    const user = await getCurrentUser()
+    userId = user?.id
+    userEmail = user?.email
 
     // Get user agent from headers
     const { headers } = await import('next/headers')
     const headersList = await headers()
     const userAgent = headersList.get('user-agent') || undefined
 
-    // Save to database with RLS context
-    // Note: Avoid relying on RETURNING because RLS without a SELECT policy
-    // can cause INSERT ... RETURNING to return zero rows.
     const id = generateId()
-    await withOptionalRLS(userId || null, async tx => {
-      await tx.insert(feedback).values({
+    const client = getInsForgeAdminClient()
+    const { error: insertError } = await client.database
+      .from('brok_feedback')
+      .insert({
         id,
-        userId,
+        user_id: userId,
         sentiment: data.sentiment,
         message: data.message,
-        pageUrl: data.pageUrl,
-        userAgent
+        page_url: data.pageUrl,
+        user_agent: userAgent
       })
-    })
+    if (insertError) throw insertError
 
     // Send to Slack if webhook URL is configured
     const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL

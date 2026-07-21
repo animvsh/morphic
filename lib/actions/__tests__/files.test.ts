@@ -1,13 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
-import { getSignedFileUrl } from '@/lib/storage/r2-client'
+import * as dbActions from '@/lib/insforge/db-actions'
+import { deleteFileObject, getSignedFileUrl } from '@/lib/storage/r2-client'
 
 import { deleteFile, listFiles, searchFiles } from '../files'
 
 vi.mock('@/lib/auth/get-current-user')
-vi.mock('@/lib/db/actions')
+vi.mock('@/lib/insforge/db-actions')
 vi.mock('@/lib/storage/r2-client')
 
 const originalEnableAuth = process.env.ENABLE_AUTH
@@ -35,7 +35,11 @@ describe('File Actions', () => {
       hasMore: false
     })
     vi.mocked(dbActions.searchLibraryFiles).mockResolvedValue([libraryFile])
-    vi.mocked(dbActions.deleteLibraryFile).mockResolvedValue({ success: true })
+    vi.mocked(dbActions.deleteLibraryFile).mockResolvedValue({
+      success: true,
+      objectKey: libraryFile.objectKey
+    })
+    vi.mocked(deleteFileObject).mockResolvedValue(undefined)
     vi.mocked(getSignedFileUrl).mockResolvedValue(
       'https://signed.example.com/report.pdf'
     )
@@ -91,6 +95,11 @@ describe('File Actions', () => {
 
     expect(result).toEqual({ success: true })
     expect(dbActions.deleteLibraryFile).toHaveBeenCalledWith('file-1', 'user-1')
+    expect(deleteFileObject).toHaveBeenCalledTimes(2)
+    expect(deleteFileObject).toHaveBeenCalledWith(libraryFile.objectKey)
+    expect(deleteFileObject).toHaveBeenCalledWith(
+      `${libraryFile.objectKey}.brok-context.txt`
+    )
   })
 
   it('rejects anonymous mode', async () => {

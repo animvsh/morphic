@@ -24,6 +24,8 @@ pnpm-lock.yaml
 .DS_Store
 coverage/
 .cache/
+.wrangler/
+AGENTS.md
 
 # Next.js
 .next/

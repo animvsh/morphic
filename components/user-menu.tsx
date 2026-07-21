@@ -1,16 +1,15 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 
-import type { User } from '@supabase/supabase-js'
 import {
   IconLink as Link2,
   IconLogout as LogOut,
   IconUserCircle as UserRound
 } from '@tabler/icons-react'
 
-import { createClient } from '@/lib/supabase/client'
+import type { AppUser } from '@/lib/insforge/auth'
+import { cn } from '@/lib/utils'
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -31,11 +30,16 @@ import { Button } from './ui/button'
 import { ExternalLinkItems } from './external-link-items'
 
 interface UserMenuProps {
-  user: User
+  user: AppUser
+  align?: 'start' | 'center' | 'end'
+  showLabel?: boolean
 }
 
-export default function UserMenu({ user }: UserMenuProps) {
-  const router = useRouter()
+export default function UserMenu({
+  user,
+  align = 'end',
+  showLabel = false
+}: UserMenuProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
   const userName =
@@ -58,10 +62,8 @@ export default function UserMenu({ user }: UserMenuProps) {
   }
 
   const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push('/')
-    router.refresh()
+    await fetch('/api/auth/session', { method: 'DELETE' })
+    window.location.assign('/')
   }
 
   const handleOpenAccount = () => {
@@ -73,16 +75,29 @@ export default function UserMenu({ user }: UserMenuProps) {
     <>
       <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen} modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative size-6 rounded-full">
+          <Button
+            variant="ghost"
+            className={cn(
+              'relative rounded-xl',
+              showLabel
+                ? 'h-11 w-full justify-start gap-2 px-2 group-data-[collapsible=icon]:size-8! group-data-[collapsible=icon]:p-1!'
+                : 'size-6 rounded-full'
+            )}
+          >
             <Avatar className="size-6">
               <AvatarImage src={avatarUrl} alt={userName} />
               <AvatarFallback>
                 {getInitials(userName, user.email)}
               </AvatarFallback>
             </Avatar>
+            {showLabel && (
+              <span className="min-w-0 flex-1 truncate text-left text-xs font-normal lowercase text-black/55 group-data-[collapsible=icon]:hidden">
+                {user.email}
+              </span>
+            )}
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-60" align="end" forceMount>
+        <DropdownMenuContent className="w-60" align={align} forceMount>
           <DropdownMenuLabel className="font-normal">
             <div className="flex flex-col space-y-1">
               <p className="text-sm font-medium leading-none truncate">

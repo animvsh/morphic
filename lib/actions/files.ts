@@ -1,9 +1,11 @@
 'use server'
 
+import { getAccountControl } from '@/lib/admin/account-control'
+import { getAttachmentContextKey } from '@/lib/attachments/understand-attachment'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
 import type { LibraryFile } from '@/lib/db/schema'
-import { getSignedFileUrl } from '@/lib/storage/r2-client'
+import * as dbActions from '@/lib/insforge/db-actions'
+import { deleteFileObject, getSignedFileUrl } from '@/lib/storage/r2-client'
 
 const DEFAULT_FILES_PAGE_SIZE = 25
 
@@ -42,6 +44,11 @@ async function requireLibraryFileUserId() {
   const userId = await getCurrentUserId()
   if (!userId) {
     return { userId: null, error: 'Sign in to use library files.' }
+  }
+
+  const control = await getAccountControl(userId)
+  if (control.status !== 'active') {
+    return { userId: null, error: 'This account is suspended.' }
   }
 
   return { userId, error: null }
@@ -125,5 +132,20 @@ export async function deleteFile(
     return { success: false, error: error ?? 'User not authenticated' }
   }
 
-  return dbActions.deleteLibraryFile(fileId, userId)
+  const result = await dbActions.deleteLibraryFile(fileId, userId)
+  if (!result.success || !result.objectKey) return result
+
+  try {
+    await Promise.all([
+      deleteFileObject(result.objectKey),
+      deleteFileObject(getAttachmentContextKey(result.objectKey))
+    ])
+    return { success: true }
+  } catch (deleteError) {
+    console.error('Error deleting stored file objects:', deleteError)
+    return {
+      success: false,
+      error: 'The library entry was removed, but storage cleanup failed.'
+    }
+  }
 }

@@ -36,5 +36,13 @@ export default defineConfig([
       'simple-import-sort/exports': 'error'
     }
   },
-  globalIgnores(['.next/**', 'out/**', 'build/**', 'next-env.d.ts'])
+  globalIgnores([
+    '.next/**',
+    '.open-next/**',
+    '.wrangler/**',
+    'cloudflare/dist/**',
+    'out/**',
+    'build/**',
+    'next-env.d.ts'
+  ])
 ])

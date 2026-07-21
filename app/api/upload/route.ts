@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { PutObjectCommand } from '@aws-sdk/client-s3'
-
-import { capture } from '@/lib/analytics/dispatch'
-import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
 import {
-  getR2Client,
+  accountControlResponse,
+  getAccountControl
+} from '@/lib/admin/account-control'
+import { capture } from '@/lib/analytics/dispatch'
+import {
+  formatAttachmentContext,
+  getAttachmentContextKey,
+  understandAttachment
+} from '@/lib/attachments/understand-attachment'
+import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import * as dbActions from '@/lib/insforge/db-actions'
+import {
+  deleteFileObject,
   getSignedFileUrl,
   isObjectStorageConfigured,
-  R2_BUCKET_NAME
+  uploadFileObject,
+  uploadTextObject
 } from '@/lib/storage/r2-client'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
@@ -21,13 +29,15 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const blocked = accountControlResponse(await getAccountControl(userId))
+    if (blocked) return blocked
 
     if (!isObjectStorageConfigured()) {
       return NextResponse.json(
         {
           error: 'File upload storage is not configured',
           message:
-            'Set R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, and either R2_ACCOUNT_ID or S3_ENDPOINT.'
+            'Configure private InsForge storage or the legacy S3-compatible storage variables.'
         },
         { status: 400 }
       )
@@ -61,7 +71,7 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       )
     }
-    const result = await uploadFileToR2(file, userId, chatId)
+    const result = await uploadAttachment(file, userId, chatId)
     if (process.env.ENABLE_AUTH === 'false') {
       return NextResponse.json({ success: true, file: result }, { status: 200 })
     }
@@ -70,7 +80,10 @@ export async function POST(req: NextRequest) {
     try {
       const createdFile = await dbActions.createLibraryFile({
         userId,
-        chatId: chatId || null,
+        // Uploads happen before a new chat row exists. The object key still
+        // carries the eventual chat id; keep metadata unattached until then
+        // instead of violating the chat foreign key.
+        chatId: null,
         filename: result.filename,
         objectKey: result.key,
         mediaType: result.mediaType,
@@ -103,10 +116,14 @@ export async function POST(req: NextRequest) {
       },
       { status: 200 }
     )
-  } catch (err: any) {
+  } catch (err) {
     console.error('Upload Error:', err)
+    const message =
+      err instanceof Error
+        ? err.message
+        : 'The attachment could not be prepared.'
     return NextResponse.json(
-      { error: 'Upload failed', message: err.message },
+      { error: 'Upload failed', message },
       { status: 500 }
     )
   }
@@ -116,24 +133,21 @@ function sanitizeFilename(filename: string) {
   return filename.replace(/[^a-z0-9.\-_]/gi, '_').toLowerCase()
 }
 
-async function uploadFileToR2(file: File, userId: string, chatId: string) {
+async function uploadAttachment(file: File, userId: string, chatId: string) {
   const sanitizedFileName = sanitizeFilename(file.name)
-  const filePath = `${userId}/chats/${chatId}/${Date.now()}-${sanitizedFileName}`
+  const safeChatId = chatId?.trim() || 'unassigned'
+  const filePath = `${userId}/chats/${safeChatId}/${Date.now()}-${sanitizedFileName}`
+  const contextKey = getAttachmentContextKey(filePath)
+  const understanding = await understandAttachment(file)
+  const context = formatAttachmentContext({
+    filename: file.name,
+    mediaType: file.type,
+    context: understanding.context
+  })
 
   try {
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const r2Client = getR2Client()
-
-    await r2Client.send(
-      new PutObjectCommand({
-        Bucket: R2_BUCKET_NAME,
-        Key: filePath,
-        Body: buffer,
-        ContentType: file.type,
-        CacheControl: 'max-age=3600'
-      })
-    )
-
+    await uploadFileObject(filePath, file)
+    await uploadTextObject(contextKey, context)
     const signedUrl = await getSignedFileUrl(filePath)
 
     return {
@@ -141,9 +155,15 @@ async function uploadFileToR2(file: File, userId: string, chatId: string) {
       key: filePath,
       url: signedUrl,
       mediaType: file.type,
-      type: 'file'
+      type: 'file',
+      understanding: understanding.kind
     }
-  } catch (error: any) {
-    throw new Error('Upload failed: ' + error.message)
+  } catch (error) {
+    await Promise.allSettled([
+      deleteFileObject(filePath),
+      deleteFileObject(contextKey)
+    ])
+    const detail = error instanceof Error ? error.message : 'unknown error'
+    throw new Error(`Attachment storage failed: ${detail}`)
   }
 }

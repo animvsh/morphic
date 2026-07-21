@@ -1,12 +1,8 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter as FontSans } from 'next/font/google'
 
-import { Analytics } from '@vercel/analytics/next'
-
-import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import { getCurrentUser, getCurrentUserId } from '@/lib/auth/get-current-user'
 import { UserProvider } from '@/lib/contexts/user-context'
-import { hasSupabasePublicConfig } from '@/lib/supabase/keys'
-import { createClient } from '@/lib/supabase/server'
 import { cn } from '@/lib/utils'
 
 import { SidebarProvider } from '@/components/ui/sidebar'
@@ -17,6 +13,7 @@ import ArtifactRoot from '@/components/artifact/artifact-root'
 import Header from '@/components/header'
 import { KeyboardShortcutHandler } from '@/components/keyboard-shortcut-handler'
 import { LibraryProvider } from '@/components/library/library-context'
+import { OnboardingDialog } from '@/components/onboarding-dialog'
 import { PostHogProvider } from '@/components/posthog-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 
@@ -27,12 +24,10 @@ const fontSans = FontSans({
   variable: '--font-sans'
 })
 
-const title = 'Morphic'
-const description =
-  'A fully open-source AI-powered answer engine with a generative UI.'
+const title = 'brok'
+const description = "ai that's affordable. like, really affordable."
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://morphic.sh'),
   title,
   description,
   openGraph: {
@@ -42,8 +37,7 @@ export const metadata: Metadata = {
   twitter: {
     title,
     description,
-    card: 'summary_large_image',
-    creator: '@miiura'
+    card: 'summary_large_image'
   }
 }
 
@@ -54,20 +48,16 @@ export const viewport: Viewport = {
   maximumScale: 1
 }
 
+// The shell contains account and sidebar state, so it must be rendered from
+// the current InsForge session instead of being cached as a guest-only page.
+export const dynamic = 'force-dynamic'
+
 export default async function RootLayout({
   children
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  let user = null
-
-  if (hasSupabasePublicConfig()) {
-    const supabase = await createClient()
-    const {
-      data: { user: supabaseUser }
-    } = await supabase.auth.getUser()
-    user = supabaseUser
-  }
+  const user = await getCurrentUser()
 
   const userId = user?.id ?? (await getCurrentUserId())
 
@@ -81,15 +71,15 @@ export default async function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="light"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <PostHogProvider userId={user?.id ?? null}>
-            <UserProvider hasUser={!!userId}>
-              <SidebarProvider defaultOpen={false}>
+            <UserProvider hasUser={!!userId} user={user}>
+              <SidebarProvider defaultOpen={!!userId}>
                 <LibraryProvider>
-                  {userId && <AppSidebar />}
+                  {user && <AppSidebar user={user} />}
                   <KeyboardShortcutHandler />
                   <div className="flex flex-col flex-1 min-w-0">
                     <Header user={user} />
@@ -99,10 +89,12 @@ export default async function RootLayout({
                   </div>
                 </LibraryProvider>
               </SidebarProvider>
+              {user && !user.user_metadata.onboarding_completed && (
+                <OnboardingDialog />
+              )}
             </UserProvider>
           </PostHogProvider>
           <Toaster />
-          <Analytics />
         </ThemeProvider>
       </body>
     </html>

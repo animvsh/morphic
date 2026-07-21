@@ -81,8 +81,7 @@ export function AnswerSection({
   const [authPromptOpen, setAuthPromptOpen] = useState(false)
   const lastTrackedSelectionKeyRef = useRef<string | null>(null)
   const { openLibrary, upsertCachedNote } = useLibrary()
-  const enableShare =
-    process.env.NEXT_PUBLIC_SUPABASE_URL !== undefined && !isGuest
+  const enableShare = !isGuest
   const showSelectionSaveButton =
     libraryAvailable && (!isGuest || isCloudDeployment)
   const showSelectionDeepDiveButton = Boolean(onQuoteContext)
@@ -273,7 +272,11 @@ export function AnswerSection({
             onMouseUp={updateSelection}
             onKeyUp={updateSelection}
           >
-            <MarkdownMessage message={content} citationMaps={citationMaps} />
+            <MarkdownMessage
+              message={content}
+              citationMaps={citationMaps}
+              isAnimating={status === 'streaming' && !showActions}
+            />
           </div>
           {selection &&
             (showSelectionSaveButton || showSelectionDeepDiveButton) && (

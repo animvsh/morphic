@@ -28,11 +28,13 @@ const customComponents = {
 export function MarkdownMessage({
   message,
   className,
-  citationMaps
+  citationMaps,
+  isAnimating = false
 }: {
   message: string
   className?: string
   citationMaps?: Record<string, Record<number, SearchResultItem>>
+  isAnimating?: boolean
 }) {
   // Process citations to replace [number](#toolCallId) with [number](actual-url)
   const processedMessage = processCitations(message || '', citationMaps || {})
@@ -40,6 +42,14 @@ export function MarkdownMessage({
   const streamdownProps = useMemo<Partial<StreamdownProps>>(
     () => ({
       mode: 'streaming' as const,
+      animated: {
+        animation: 'blurIn',
+        duration: 150,
+        easing: 'cubic-bezier(0.23, 1, 0.32, 1)',
+        sep: 'word',
+        stagger: 8
+      },
+      caret: 'circle' as const,
       plugins: mergeStreamdownSpecRenderer({ math })
     }),
     []
@@ -55,6 +65,7 @@ export function MarkdownMessage({
       >
         <Streamdown
           {...streamdownProps}
+          isAnimating={isAnimating}
           rehypePlugins={rehypePlugins}
           components={customComponents}
         >

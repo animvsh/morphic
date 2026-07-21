@@ -1,5 +1,6 @@
 import { generateText } from 'ai'
 
+import { cleanGeneratedTitle } from '../utils/model-output'
 import { getModel } from '../utils/registry'
 import { isTracingEnabled } from '../utils/telemetry'
 
@@ -43,7 +44,7 @@ export async function generateChatTitle({
       }
     })
 
-    const cleanedTitle = generatedTitle.trim()
+    const cleanedTitle = cleanGeneratedTitle(generatedTitle)
 
     // If the model returns an empty string, use the fallback.
     if (!cleanedTitle) {
@@ -51,8 +52,7 @@ export async function generateChatTitle({
       return fallbackTitle
     }
 
-    // Remove any surrounding quotes that the model might have added
-    return cleanedTitle.replace(/^[\"']|[\"']$/g, '')
+    return cleanedTitle
   } catch (error) {
     if (
       error instanceof Error &&

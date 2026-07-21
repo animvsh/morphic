@@ -9,6 +9,17 @@ export type SearchResults = {
   query: string
   toolCallId?: string // ID of the search tool call
   citationMap?: Record<number, SearchResultItem> // Maps citation number to search result
+  identity_resolution?: {
+    resolved_person: string
+    current_company_candidate: string
+    instruction: string
+    candidate_evidence: Array<{
+      company: string
+      age_days: number | null
+      url: string
+      excerpt: string
+    }>
+  }
 }
 
 // If include_images_description is true, images are objects with url/description.

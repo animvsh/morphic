@@ -1,13 +1,21 @@
 import { revalidateTag } from 'next/cache'
 import { cookies } from 'next/headers'
 
+import { randomUUID } from 'node:crypto'
+
 import { loadChat } from '@/lib/actions/chat'
+import {
+  accountControlResponse,
+  getAccountControl
+} from '@/lib/admin/account-control'
+import { createRequestEvent, failRequestEvent } from '@/lib/admin/usage'
 import {
   calculateConversationTurn,
   deriveQueryShape,
   trackChatEvent
 } from '@/lib/analytics'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
+import { resolveGuestRequestMessages } from '@/lib/chat/request-contract'
 import { generateId } from '@/lib/db/schema'
 import { checkAndEnforceAdaptiveLimit } from '@/lib/rate-limit/adaptive-limit'
 import { checkAndEnforceOverallChatLimit } from '@/lib/rate-limit/chat-limits'
@@ -30,6 +38,8 @@ export const maxDuration = 300
 export async function POST(req: Request) {
   const startTime = performance.now()
   const abortSignal = req.signal
+  let requestEventId: string | undefined
+  let requestStartedAt: number | undefined
 
   // Reset counters for new request (development only)
   if (process.env.ENABLE_PERF_LOGGING === 'true') {
@@ -152,14 +162,44 @@ export async function POST(req: Request) {
     }
 
     if (!isGuest) {
-      const overallLimitResponse = await checkAndEnforceOverallChatLimit(userId)
+      const accountControl = await getAccountControl(userId)
+      const blockedResponse = accountControlResponse(accountControl)
+      if (blockedResponse) return blockedResponse
+
+      const overallLimitResponse = await checkAndEnforceOverallChatLimit(
+        userId,
+        searchMode === 'quick' ? accountControl.quickDailyLimit : undefined
+      )
       if (overallLimitResponse) return overallLimitResponse
 
       if (searchMode === 'adaptive') {
-        const adaptiveLimitResponse = await checkAndEnforceAdaptiveLimit(userId)
+        const adaptiveLimitResponse = await checkAndEnforceAdaptiveLimit(
+          userId,
+          accountControl.adaptiveDailyLimit
+        )
         if (adaptiveLimitResponse) return adaptiveLimitResponse
       }
     }
+
+    requestEventId = randomUUID()
+    const resolvedTrigger: 'submit-message' | 'regenerate-message' =
+      trigger === 'regenerate-message' ? 'regenerate-message' : 'submit-message'
+    const queryText = message?.parts ? getTextFromParts(message.parts) : ''
+    requestStartedAt = await createRequestEvent({
+      id: requestEventId,
+      userId: userId ?? undefined,
+      analyticsId:
+        typeof analyticsId === 'string' && analyticsId
+          ? analyticsId
+          : requestEventId,
+      chatId,
+      requestMessageId: message?.id ?? messageId,
+      queryText,
+      trigger: resolvedTrigger,
+      searchMode,
+      providerId: selectedModel.providerId,
+      modelId: selectedModel.id
+    })
 
     const streamStart = performance.now()
     perfLog(
@@ -168,11 +208,13 @@ export async function POST(req: Request) {
 
     const response = isGuest
       ? await createEphemeralChatStreamResponse({
-          messages: Array.isArray(messages) ? messages : [],
+          messages: resolveGuestRequestMessages(messages, message),
           model: selectedModel,
           abortSignal,
           searchMode,
-          chatId
+          chatId,
+          requestEventId,
+          requestStartedAt
         })
       : await createChatStreamResponse({
           message,
@@ -183,8 +225,18 @@ export async function POST(req: Request) {
           messageId,
           abortSignal,
           isNewChat,
-          searchMode
+          searchMode,
+          requestEventId,
+          requestStartedAt
         })
+
+    if (!response.ok) {
+      await failRequestEvent({
+        eventId: requestEventId,
+        startedAt: requestStartedAt,
+        error: new Error(`stream_setup_${response.status}`)
+      })
+    }
 
     perfTime('createChatStreamResponse resolved', streamStart)
 
@@ -255,6 +307,11 @@ export async function POST(req: Request) {
 
     return response
   } catch (error) {
+    await failRequestEvent({
+      eventId: requestEventId,
+      startedAt: requestStartedAt,
+      error
+    })
     console.error('API route error:', error)
     return new Response('Error processing your request', {
       status: 500,

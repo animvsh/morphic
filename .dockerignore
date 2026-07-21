@@ -1,0 +1,9 @@
+.git
+.next
+.open-next
+node_modules
+.env*
+.dev.vars
+coverage
+test-results
+*.log

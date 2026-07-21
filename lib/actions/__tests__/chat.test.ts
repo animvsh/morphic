@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { generateChatTitle } from '@/lib/agents/title-generator'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
-import * as dbActions from '@/lib/db/actions'
 import type { Chat, Message } from '@/lib/db/schema'
+import * as dbActions from '@/lib/insforge/db-actions'
 import type { UIMessage } from '@/lib/types/ai'
 
 import {
@@ -26,7 +26,7 @@ import {
 
 // Mock the modules
 vi.mock('@/lib/auth/get-current-user')
-vi.mock('@/lib/db/actions')
+vi.mock('@/lib/insforge/db-actions')
 vi.mock('@/lib/agents/title-generator')
 
 describe('Chat Actions', () => {

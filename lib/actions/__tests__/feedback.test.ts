@@ -1,133 +1,106 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-// Mock the modules before any imports
-vi.mock('@/lib/db')
 vi.mock('@langfuse/client')
+vi.mock('@/lib/insforge/admin')
 vi.mock('@/lib/utils/telemetry')
 
-// Import after mocking
 import { LangfuseClient } from '@langfuse/client'
 
-import { db } from '@/lib/db'
+import { getInsForgeAdminClient } from '@/lib/insforge/admin'
 import { isTracingEnabled } from '@/lib/utils/telemetry'
 
 import { getMessageFeedback, updateMessageFeedback } from '../feedback'
 
+function mockClient({
+  message,
+  loadError,
+  updateError
+}: {
+  message?: { metadata: Record<string, unknown> } | null
+  loadError?: unknown
+  updateError?: unknown
+}) {
+  const loadBuilder = {
+    select: vi.fn(),
+    eq: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue({
+      data: message === undefined ? { metadata: {} } : message,
+      error: loadError ?? null
+    })
+  }
+  loadBuilder.select.mockReturnValue(loadBuilder)
+  loadBuilder.eq.mockReturnValue(loadBuilder)
+
+  const updateBuilder = {
+    update: vi.fn(),
+    eq: vi.fn().mockResolvedValue({ data: null, error: updateError ?? null })
+  }
+  updateBuilder.update.mockReturnValue(updateBuilder)
+
+  const database = {
+    from: vi
+      .fn()
+      .mockReturnValueOnce(loadBuilder)
+      .mockReturnValueOnce(updateBuilder)
+  }
+  vi.mocked(getInsForgeAdminClient).mockReturnValue({ database } as never)
+  return { database, loadBuilder, updateBuilder }
+}
+
 describe('Feedback Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(isTracingEnabled).mockReturnValue(false)
   })
 
   describe('updateMessageFeedback', () => {
-    it('should update message feedback successfully', async () => {
-      const messageId = 'test-message-id'
-      const chatId = 'test-chat-id'
-      const score = 1
+    it('updates message feedback successfully', async () => {
+      const { updateBuilder } = mockClient({
+        message: { metadata: { traceId: 'test-trace-id' } }
+      })
 
-      // Mock db.select
-      const mockLimit = vi.fn().mockResolvedValue([
-        {
-          metadata: { traceId: 'test-trace-id' },
-          chatId
-        }
-      ])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      // Mock db.update
-      const mockUpdateWhere = vi.fn().mockResolvedValue(undefined)
-      const mockSet = vi.fn().mockReturnValue({ where: mockUpdateWhere })
-      vi.mocked(db).update = vi.fn().mockReturnValue({ set: mockSet })
-
-      // Mock tracing disabled
-      vi.mocked(isTracingEnabled).mockReturnValue(false)
-
-      const result = await updateMessageFeedback(messageId, score)
-
-      expect(result).toEqual({ success: true })
-      expect(db.select).toHaveBeenCalled()
-      expect(db.update).toHaveBeenCalled()
+      await expect(updateMessageFeedback('message-1', 1)).resolves.toEqual({
+        success: true
+      })
+      expect(updateBuilder.update).toHaveBeenCalledWith({
+        metadata: { traceId: 'test-trace-id', feedbackScore: 1 }
+      })
     })
 
-    it('should return error when message not found', async () => {
-      const messageId = 'non-existent-id'
-      const score = 1
-
-      // Mock empty database response
-      const mockLimit = vi.fn().mockResolvedValue([])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await updateMessageFeedback(messageId, score)
-
-      expect(result).toEqual({
+    it('returns an error when the message is missing', async () => {
+      mockClient({ message: null })
+      await expect(updateMessageFeedback('missing', 1)).resolves.toEqual({
         success: false,
         error: 'Message not found'
       })
     })
 
-    it('should handle errors gracefully', async () => {
-      const messageId = 'test-message-id'
-      const score = -1
-
-      // Mock database error
-      const mockLimit = vi.fn().mockRejectedValue(new Error('Database error'))
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await updateMessageFeedback(messageId, score)
-
-      expect(result.success).toBe(false)
-      expect(result.error).toBe('Database error')
+    it('handles database errors gracefully', async () => {
+      mockClient({ loadError: new Error('Database error') })
+      await expect(updateMessageFeedback('message-1', -1)).resolves.toEqual({
+        success: false,
+        error: 'Database error'
+      })
     })
 
-    it('should send feedback to Langfuse when tracing is enabled', async () => {
-      const messageId = 'test-message-id'
-      const chatId = 'test-chat-id'
-      const score = 1
-
-      // Enable tracing
+    it('sends feedback to Langfuse when tracing is enabled', async () => {
       vi.mocked(isTracingEnabled).mockReturnValue(true)
-
-      // Mock LangfuseClient
       const mockScoreCreate = vi.fn()
       const mockFlush = vi.fn().mockResolvedValue(undefined)
       vi.mocked(LangfuseClient).mockImplementation(function () {
         return {
-          score: {
-            create: mockScoreCreate,
-            flush: mockFlush
-          }
-        } as any
-      } as any)
+          score: { create: mockScoreCreate, flush: mockFlush }
+        } as never
+      } as never)
+      mockClient({ message: { metadata: { traceId: 'trace-1' } } })
 
-      // Mock db.select
-      const mockLimit = vi.fn().mockResolvedValue([
-        {
-          metadata: { traceId: 'test-trace-id' },
-          chatId
-        }
-      ])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      // Mock db.update
-      const mockUpdateWhere = vi.fn().mockResolvedValue(undefined)
-      const mockSet = vi.fn().mockReturnValue({ where: mockUpdateWhere })
-      vi.mocked(db).update = vi.fn().mockReturnValue({ set: mockSet })
-
-      const result = await updateMessageFeedback(messageId, score)
-
-      expect(result).toEqual({ success: true })
-      expect(LangfuseClient).toHaveBeenCalled()
+      await expect(updateMessageFeedback('message-1', 1)).resolves.toEqual({
+        success: true
+      })
       expect(mockScoreCreate).toHaveBeenCalledWith({
-        traceId: 'test-trace-id',
+        traceId: 'trace-1',
         name: 'user-feedback',
-        value: score,
+        value: 1,
         comment: 'Thumbs up'
       })
       expect(mockFlush).toHaveBeenCalled()
@@ -135,69 +108,24 @@ describe('Feedback Actions', () => {
   })
 
   describe('getMessageFeedback', () => {
-    it('should retrieve feedback score successfully', async () => {
-      const messageId = 'test-message-id'
-      const feedbackScore = 1
-
-      // Mock database response
-      const mockLimit = vi.fn().mockResolvedValue([
-        {
-          metadata: { feedbackScore }
-        }
-      ])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await getMessageFeedback(messageId)
-
-      expect(result).toBe(feedbackScore)
+    it('retrieves the stored score', async () => {
+      mockClient({ message: { metadata: { feedbackScore: 1 } } })
+      await expect(getMessageFeedback('message-1')).resolves.toBe(1)
     })
 
-    it('should return null when message not found', async () => {
-      const messageId = 'non-existent-id'
-
-      // Mock empty database response
-      const mockLimit = vi.fn().mockResolvedValue([])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await getMessageFeedback(messageId)
-
-      expect(result).toBeNull()
+    it('returns null when the message is missing', async () => {
+      mockClient({ message: null })
+      await expect(getMessageFeedback('missing')).resolves.toBeNull()
     })
 
-    it('should return null when no feedback score exists', async () => {
-      const messageId = 'test-message-id'
-
-      // Mock database response without feedbackScore
-      const mockLimit = vi.fn().mockResolvedValue([
-        {
-          metadata: {}
-        }
-      ])
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await getMessageFeedback(messageId)
-
-      expect(result).toBeNull()
+    it('returns null when no score exists', async () => {
+      mockClient({ message: { metadata: {} } })
+      await expect(getMessageFeedback('message-1')).resolves.toBeNull()
     })
 
-    it('should handle errors and return null', async () => {
-      const messageId = 'test-message-id'
-
-      // Mock database error
-      const mockLimit = vi.fn().mockRejectedValue(new Error('Database error'))
-      const mockWhere = vi.fn().mockReturnValue({ limit: mockLimit })
-      const mockFrom = vi.fn().mockReturnValue({ where: mockWhere })
-      vi.mocked(db).select = vi.fn().mockReturnValue({ from: mockFrom })
-
-      const result = await getMessageFeedback(messageId)
-
-      expect(result).toBeNull()
+    it('returns null when the database fails', async () => {
+      mockClient({ loadError: new Error('Database error') })
+      await expect(getMessageFeedback('message-1')).resolves.toBeNull()
     })
   })
 })

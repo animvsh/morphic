@@ -26,7 +26,14 @@ const providers: Record<string, any> = {
     apiKey: process.env.OPENAI_COMPATIBLE_API_KEY,
     baseURL: normalizeOpenAICompatibleBaseURL(
       process.env.OPENAI_COMPATIBLE_API_BASE_URL || ''
-    )
+    ),
+    // MiniMax can return reasoning separately from answer text. Keeping the
+    // channels split lets Morphic animate a real reasoning phase without
+    // flashing <think> blocks or private working notes as answer text.
+    transformRequestBody: args =>
+      process.env.OPENAI_COMPATIBLE_API_BASE_URL?.includes('api.minimax.io')
+        ? { ...args, reasoning_split: true }
+        : args
   }),
   gateway: createGateway({
     apiKey: process.env.AI_GATEWAY_API_KEY

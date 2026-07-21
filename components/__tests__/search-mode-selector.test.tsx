@@ -24,7 +24,7 @@ describe('SearchModeSelector', () => {
       />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /adaptive mode/i }))
+    fireEvent.click(screen.getByRole('button', { name: /reason mode/i }))
 
     expect(onAdaptiveAuthRequired).toHaveBeenCalledTimes(1)
     expect(getCookie('searchMode')).toBe('quick')
@@ -37,7 +37,7 @@ describe('SearchModeSelector', () => {
       <SearchModeSelector onAdaptiveAuthRequired={onAdaptiveAuthRequired} />
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /adaptive mode/i }))
+    fireEvent.click(screen.getByRole('button', { name: /reason mode/i }))
 
     expect(onAdaptiveAuthRequired).not.toHaveBeenCalled()
     expect(getCookie('searchMode')).toBe('adaptive')

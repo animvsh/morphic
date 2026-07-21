@@ -1,0 +1,24 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "brok-domain-proxy",
+  "main": "cloudflare/worker.ts",
+  "compatibility_date": "2026-07-18",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "workers_dev": true,
+  "routes": [
+    {
+      "pattern": "brok.fyi/*",
+      "zone_name": "brok.fyi"
+    },
+    {
+      "pattern": "admin.brok.fyi/*",
+      "zone_name": "brok.fyi"
+    }
+  ],
+  "vars": {
+    "ORIGIN_URL": "https://brok-app-production.up.railway.app"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

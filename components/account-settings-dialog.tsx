@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 
-import type { User } from '@supabase/supabase-js'
 import {
   IconDeviceLaptop as Laptop,
   IconMoon as Moon,
@@ -13,7 +11,7 @@ import {
 import { toast } from 'sonner'
 
 import { deleteAccount } from '@/lib/actions/account'
-import { createClient } from '@/lib/supabase/client'
+import type { AppUser } from '@/lib/insforge/auth'
 
 import {
   AlertDialog,
@@ -42,7 +40,7 @@ import { useTheme } from '@/components/theme-provider'
 interface AccountSettingsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  user: User
+  user: AppUser
 }
 
 const themeOptions = [
@@ -56,7 +54,6 @@ export function AccountSettingsDialog({
   onOpenChange,
   user
 }: AccountSettingsDialogProps) {
-  const router = useRouter()
   const { setTheme, theme } = useTheme()
   const [isDeleting, startDeleteTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -71,7 +68,7 @@ export function AccountSettingsDialog({
 
       if (result.success) {
         try {
-          await createClient().auth.signOut()
+          await fetch('/api/auth/session', { method: 'DELETE' })
         } catch (error) {
           console.error('Failed to clear client session:', error)
         }
@@ -79,8 +76,7 @@ export function AccountSettingsDialog({
         toast.success('Account deleted')
         setConfirmOpen(false)
         onOpenChange(false)
-        router.push('/')
-        router.refresh()
+        window.location.assign('/')
         return
       }
 
