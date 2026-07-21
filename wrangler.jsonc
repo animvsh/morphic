@@ -11,8 +11,8 @@
       "zone_name": "brok.fyi"
     },
     {
-      "pattern": "admin.brok.fyi/*",
-      "zone_name": "brok.fyi"
+      "pattern": "admin.brok.fyi",
+      "custom_domain": true
     }
   ],
   "vars": {
