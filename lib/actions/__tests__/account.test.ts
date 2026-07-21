@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { trackAccountDeleted } from '@/lib/analytics'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getInsForgeAdminClient } from '@/lib/insforge/admin'
 import * as dbActions from '@/lib/insforge/db-actions'
 import { deleteUserObjects } from '@/lib/storage/r2-client'
 
@@ -11,6 +12,7 @@ import { deleteAccount } from '../account'
 
 vi.mock('@/lib/analytics')
 vi.mock('@/lib/auth/get-current-user')
+vi.mock('@/lib/insforge/admin')
 vi.mock('@/lib/insforge/db-actions')
 vi.mock('@/lib/storage/r2-client')
 
@@ -21,6 +23,7 @@ const originalInsForgeApiKey = process.env.INSFORGE_API_KEY
 describe('Account Actions', () => {
   const user = { id: '550e8400-e29b-41d4-a716-446655440000' }
   let fetchMock: ReturnType<typeof vi.spyOn>
+  const rpc = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -42,6 +45,10 @@ describe('Account Actions', () => {
       skipped: true
     })
     vi.mocked(trackAccountDeleted).mockResolvedValue()
+    rpc.mockResolvedValue({ data: null, error: null })
+    vi.mocked(getInsForgeAdminClient).mockReturnValue({
+      database: { rpc }
+    } as any)
     fetchMock = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(null, { status: 200 }))

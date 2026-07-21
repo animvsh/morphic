@@ -9,6 +9,10 @@
     {
       "pattern": "brok.fyi/*",
       "zone_name": "brok.fyi"
+    },
+    {
+      "pattern": "admin.brok.fyi/*",
+      "zone_name": "brok.fyi"
     }
   ],
   "vars": {

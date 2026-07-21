@@ -8,9 +8,11 @@ export interface BaseStreamConfig {
   model: Model
   chatId: string
   userId: string
-  trigger?: 'submit-user-message' | 'regenerate-assistant-message'
+  trigger?: 'submit-message' | 'regenerate-message'
   messageId?: string
   abortSignal?: AbortSignal
   isNewChat?: boolean
   searchMode?: SearchMode
+  requestEventId?: string
+  requestStartedAt?: number
 }

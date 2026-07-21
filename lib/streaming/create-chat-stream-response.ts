@@ -7,6 +7,14 @@ import {
   smoothStream
 } from 'ai'
 
+import {
+  completeRequestEvent,
+  countStepTools,
+  failRequestEvent,
+  firstTokenTransform,
+  mergeToolCounts,
+  type ToolCounts
+} from '@/lib/admin/usage'
 import { researcher } from '@/lib/agents/researcher'
 import { removeRawFilesFromModelMessages } from '@/lib/attachments/message-context'
 import {
@@ -53,7 +61,9 @@ export async function createChatStreamResponse(
     messageId,
     abortSignal,
     isNewChat,
-    searchMode
+    searchMode,
+    requestEventId,
+    requestStartedAt
   } = config
 
   // Verify that chatId is provided
@@ -110,6 +120,11 @@ export async function createChatStreamResponse(
 
     // Declare titlePromise in outer scope for onFinish access
     let titlePromise: Promise<string> | undefined
+    const toolCounts: ToolCounts = {
+      toolCalls: 0,
+      searchCalls: 0,
+      fetchCalls: 0
+    }
 
     try {
       // Prepare messages for the model
@@ -188,16 +203,20 @@ export async function createChatStreamResponse(
         // the latest user turn for OpenAI-compatible providers.
         prompt: modelMessages,
         abortSignal,
-        experimental_transform: smoothStream({ chunking: 'word' }),
-        ...(isUsageLogging() && {
-          onStepFinish: step => {
+        experimental_transform: [
+          firstTokenTransform(requestEventId, requestStartedAt),
+          smoothStream({ chunking: 'word' })
+        ],
+        onStepFinish: step => {
+          mergeToolCounts(toolCounts, countStepTools(step.toolCalls))
+          if (isUsageLogging()) {
             logUsage(
               { scope: 'step', modelId: context.modelId },
               step.usage,
               step.providerMetadata
             )
           }
-        })
+        }
       })
       result.consumeStream()
 
@@ -224,7 +243,18 @@ export async function createChatStreamResponse(
         onFinish: async ({ responseMessage, isAborted }) => {
           try {
             perfTime('researchAgent.stream completed', llmStart)
-            if (isAborted || !responseMessage) return
+            const usage = await Promise.resolve(result.totalUsage)
+            if (isAborted || !responseMessage) {
+              await completeRequestEvent({
+                eventId: requestEventId,
+                startedAt: requestStartedAt,
+                traceId: parentTraceId,
+                usage,
+                tools: toolCounts,
+                aborted: true
+              })
+              return
+            }
 
             // Persist stream results to database
             await persistStreamResults(
@@ -238,17 +268,48 @@ export async function createChatStreamResponse(
               context.pendingInitialSave,
               context.pendingInitialUserMessage
             )
+            await completeRequestEvent({
+              eventId: requestEventId,
+              startedAt: requestStartedAt,
+              responseMessageId: responseMessage.id,
+              traceId: parentTraceId,
+              usage,
+              tools: toolCounts
+            })
+          } catch (error) {
+            await failRequestEvent({
+              eventId: requestEventId,
+              startedAt: requestStartedAt,
+              traceId: parentTraceId,
+              tools: toolCounts,
+              error
+            })
+            throw error
           } finally {
             await endTracing()
           }
         },
         onError: (error: unknown) => {
+          void failRequestEvent({
+            eventId: requestEventId,
+            startedAt: requestStartedAt,
+            traceId: parentTraceId,
+            tools: toolCounts,
+            error
+          })
           console.error('Stream response error:', error)
           return serializePublicError(error)
         },
         consumeSseStream: consumeStream
       })
     } catch (error) {
+      await failRequestEvent({
+        eventId: requestEventId,
+        startedAt: requestStartedAt,
+        traceId: parentTraceId,
+        tools: toolCounts,
+        error
+      })
       await endTracing()
       console.error('Stream execution error:', error)
       return createPublicErrorResponse(error, {

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
+import {
+  accountControlResponse,
+  getAccountControl
+} from '@/lib/admin/account-control'
 import { capture } from '@/lib/analytics/dispatch'
 import {
   formatAttachmentContext,
@@ -25,6 +29,8 @@ export async function POST(req: NextRequest) {
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const blocked = accountControlResponse(await getAccountControl(userId))
+    if (blocked) return blocked
 
     if (!isObjectStorageConfigured()) {
       return NextResponse.json(

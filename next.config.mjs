@@ -14,7 +14,7 @@ const nextConfig = {
     // forwarded host with its internal service domain, so explicitly trust the
     // public origins that are allowed to invoke authenticated Server Actions.
     serverActions: {
-      allowedOrigins: ['brok.fyi', 'www.brok.fyi']
+      allowedOrigins: ['brok.fyi', 'www.brok.fyi', 'admin.brok.fyi']
     }
   },
   // Reverse proxy for PostHog to reduce tracking-blocker interception.

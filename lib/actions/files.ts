@@ -1,5 +1,6 @@
 'use server'
 
+import { getAccountControl } from '@/lib/admin/account-control'
 import { getAttachmentContextKey } from '@/lib/attachments/understand-attachment'
 import { getCurrentUserId } from '@/lib/auth/get-current-user'
 import type { LibraryFile } from '@/lib/db/schema'
@@ -43,6 +44,11 @@ async function requireLibraryFileUserId() {
   const userId = await getCurrentUserId()
   if (!userId) {
     return { userId: null, error: 'Sign in to use library files.' }
+  }
+
+  const control = await getAccountControl(userId)
+  if (control.status !== 'active') {
+    return { userId: null, error: 'This account is suspended.' }
   }
 
   return { userId, error: null }

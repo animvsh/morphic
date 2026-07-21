@@ -21,8 +21,14 @@ import { PasswordInput } from './ui/password-input'
 export function LoginForm({
   className,
   message,
+  redirectTo = '/',
+  admin = false,
   ...props
-}: React.ComponentPropsWithoutRef<'div'> & { message?: string }) {
+}: React.ComponentPropsWithoutRef<'div'> & {
+  message?: string
+  redirectTo?: string
+  admin?: boolean
+}) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +46,7 @@ export function LoginForm({
       })
       const result = await response.json()
       if (!response.ok) throw new Error(result.error ?? 'could not continue')
-      window.location.assign('/')
+      window.location.assign(redirectTo)
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : 'An error occurred')
     } finally {
@@ -57,10 +63,12 @@ export function LoginForm({
         <CardHeader className="text-center">
           <CardTitle className="flex flex-col items-center justify-center gap-5 text-2xl lowercase tracking-[-0.035em]">
             <span className="size-11 rounded-[13px] bg-black shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]" />
-            welcome to brok
+            {admin ? 'brok admin' : 'welcome to brok'}
           </CardTitle>
           <CardDescription className="mx-auto max-w-[30ch] lowercase leading-5">
-            one account for your chats, searches, and everything worth keeping.
+            {admin
+              ? 'restricted operations console for authorized brok staff.'
+              : 'one account for your chats, searches, and everything worth keeping.'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -114,9 +122,11 @@ export function LoginForm({
               </Button>
             </form>
           </div>
-          <div className="mt-6 text-center text-xs lowercase leading-5 text-black/45">
-            new here? we&apos;ll make your account as you go.
-          </div>
+          {!admin && (
+            <div className="mt-6 text-center text-xs lowercase leading-5 text-black/45">
+              new here? we&apos;ll make your account as you go.
+            </div>
+          )}
         </CardContent>
       </Card>
       <div className="text-center text-xs text-muted-foreground">

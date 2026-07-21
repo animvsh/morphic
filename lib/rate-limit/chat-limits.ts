@@ -24,7 +24,10 @@ function getNextMidnightTimestamp(): number {
   return midnight.getTime()
 }
 
-async function checkOverallChatLimit(userId: string): Promise<{
+async function checkOverallChatLimit(
+  userId: string,
+  limit: number
+): Promise<{
   allowed: boolean
   remaining: number
   resetAt: number
@@ -63,11 +66,11 @@ async function checkOverallChatLimit(userId: string): Promise<{
       await redis.expire(key, secondsUntilMidnight)
     }
 
-    const remaining = Math.max(0, DAILY_CHAT_LIMIT - count)
+    const remaining = Math.max(0, limit - count)
     const resetAt = getNextMidnightTimestamp()
 
     return {
-      allowed: count <= DAILY_CHAT_LIMIT,
+      allowed: count <= limit,
       remaining,
       resetAt
     }
@@ -82,9 +85,11 @@ async function checkOverallChatLimit(userId: string): Promise<{
  * Returns a 429 Response if limit is exceeded, null if allowed
  */
 export async function checkAndEnforceOverallChatLimit(
-  userId: string
+  userId: string,
+  limitOverride?: number
 ): Promise<Response | null> {
-  const result = await checkOverallChatLimit(userId)
+  const limit = limitOverride ?? DAILY_CHAT_LIMIT
+  const result = await checkOverallChatLimit(userId, limit)
 
   if (!result.allowed) {
     return new Response(
@@ -92,13 +97,13 @@ export async function checkAndEnforceOverallChatLimit(
         error: 'Daily chat limit reached. Please try again tomorrow.',
         remaining: 0,
         resetAt: result.resetAt,
-        limit: DAILY_CHAT_LIMIT
+        limit
       }),
       {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
-          'X-RateLimit-Limit': String(DAILY_CHAT_LIMIT),
+          'X-RateLimit-Limit': String(limit),
           'X-RateLimit-Remaining': '0',
           'X-RateLimit-Reset': String(result.resetAt)
         }
@@ -106,9 +111,7 @@ export async function checkAndEnforceOverallChatLimit(
     )
   }
 
-  perfLog(
-    `Chat usage: ${DAILY_CHAT_LIMIT - result.remaining}/${DAILY_CHAT_LIMIT}`
-  )
+  perfLog(`Chat usage: ${limit - result.remaining}/${limit}`)
 
   return null
 }

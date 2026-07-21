@@ -4,6 +4,7 @@ import { revalidateTag } from 'next/cache'
 
 import { trackAccountDeleted } from '@/lib/analytics'
 import { getCurrentUser } from '@/lib/auth/get-current-user'
+import { getInsForgeAdminClient } from '@/lib/insforge/admin'
 import * as dbActions from '@/lib/insforge/db-actions'
 import { deleteUserObjects } from '@/lib/storage/r2-client'
 
@@ -29,6 +30,12 @@ export async function deleteAccount(): Promise<{
   const user = await getCurrentUser()
   if (!user) {
     return { success: false, error: 'User not authenticated' }
+  }
+
+  const baseUrl = process.env.INSFORGE_URL
+  const apiKey = process.env.INSFORGE_API_KEY
+  if (!baseUrl || !apiKey) {
+    return { success: false, error: 'InsForge admin auth is not configured' }
   }
 
   try {
@@ -69,11 +76,17 @@ export async function deleteAccount(): Promise<{
 
     await deleteUserObjects(user.id)
 
-    const baseUrl = process.env.INSFORGE_URL
-    const apiKey = process.env.INSFORGE_API_KEY
-    if (!baseUrl || !apiKey) {
-      throw new Error('InsForge admin auth is not configured')
+    // Usage events intentionally survive account deletion for aggregate
+    // reporting, but their identity and prompt fields must not.
+    const adminClient = getInsForgeAdminClient()
+    const anonymizeUsage = await adminClient.database.rpc(
+      'brok_admin_anonymize_user',
+      { target_user_id: user.id }
+    )
+    if (anonymizeUsage.error) {
+      throw new Error('Failed to anonymize account usage')
     }
+
     const deleteResponse = await fetch(`${baseUrl}/api/auth/users`, {
       method: 'DELETE',
       headers: {
