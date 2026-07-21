@@ -17,6 +17,7 @@ const worker = {
     )
 
     const headers = new Headers(request.headers)
+    headers.set('x-brok-original-host', incomingUrl.host)
     headers.set('x-forwarded-host', incomingUrl.host)
     headers.set('x-forwarded-proto', incomingUrl.protocol.replace(':', ''))
     headers.set('x-brok-edge', 'cloudflare')

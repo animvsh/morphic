@@ -6,7 +6,10 @@ export async function middleware(request: NextRequest) {
   const protocol =
     request.headers.get('x-forwarded-proto') || request.nextUrl.protocol
   const host =
-    request.headers.get('x-forwarded-host') || request.headers.get('host') || ''
+    request.headers.get('x-brok-original-host') ||
+    request.headers.get('x-forwarded-host') ||
+    request.headers.get('host') ||
+    ''
   const baseUrl = `${protocol}${protocol.endsWith(':') ? '//' : '://'}${host}`
 
   const hostname = host.split(':')[0].toLowerCase()
