@@ -24,6 +24,9 @@ const providers: Record<string, any> = {
     // only a UI label used by the model selector.
     name: 'openai-compatible',
     apiKey: process.env.OPENAI_COMPATIBLE_API_KEY,
+    // MiniMax only includes token accounting in streaming responses when the
+    // OpenAI-compatible stream_options.include_usage flag is requested.
+    includeUsage: true,
     baseURL: normalizeOpenAICompatibleBaseURL(
       process.env.OPENAI_COMPATIBLE_API_BASE_URL || ''
     ),
