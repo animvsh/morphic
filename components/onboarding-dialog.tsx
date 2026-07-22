@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 
 import { IconArrowRight, IconCheck } from '@tabler/icons-react'
 
@@ -29,11 +29,14 @@ const steps = [
 ] as const
 
 export function OnboardingDialog() {
+  const pathname = usePathname()
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const current = steps[step]
+
+  if (pathname.startsWith('/admin')) return null
 
   const finish = async () => {
     setIsSaving(true)
