@@ -6,6 +6,13 @@ const migration = readFileSync(
   join(process.cwd(), 'migrations/20260721231500_brok-admin-panel.sql'),
   'utf8'
 )
+const auditActorAnonymizationMigration = readFileSync(
+  join(
+    process.cwd(),
+    'migrations/20260722003000_brok-admin-audit-actor-anonymization.sql'
+  ),
+  'utf8'
+)
 
 describe('Brok admin database security', () => {
   it('enables RLS and revokes ordinary-user access for every admin table', () => {
@@ -29,6 +36,18 @@ describe('Brok admin database security', () => {
     expect(migration).toContain('brok_admin_audit_append_only')
     expect(migration).toContain(
       'REVOKE UPDATE, DELETE, TRUNCATE ON public.brok_admin_audit_log FROM project_admin'
+    )
+  })
+
+  it('only permits actor anonymization when an auth user is deleted', () => {
+    expect(auditActorAnonymizationMigration).toContain(
+      "to_jsonb(NEW) - 'actor_user_id'"
+    )
+    expect(auditActorAnonymizationMigration).toContain(
+      "to_jsonb(OLD) - 'actor_user_id'"
+    )
+    expect(auditActorAnonymizationMigration).toContain(
+      "RAISE EXCEPTION 'brok_admin_audit_log is append-only'"
     )
   })
 
