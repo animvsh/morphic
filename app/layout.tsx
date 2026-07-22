@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import { Inter as FontSans } from 'next/font/google'
+import { headers } from 'next/headers'
 
 import { getCurrentUser, getCurrentUserId } from '@/lib/auth/get-current-user'
 import { UserProvider } from '@/lib/contexts/user-context'
@@ -57,6 +58,16 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
+  const requestHeaders = await headers()
+  const requestHost =
+    requestHeaders.get('x-brok-original-host') ??
+    requestHeaders.get('x-forwarded-host') ??
+    requestHeaders.get('host') ??
+    ''
+  const adminHost = new URL(
+    process.env.NEXT_PUBLIC_ADMIN_URL ?? 'https://admin.brok.fyi'
+  ).hostname
+  const isAdminHost = requestHost.split(':')[0].toLowerCase() === adminHost
   const user = await getCurrentUser()
 
   const userId = user?.id ?? (await getCurrentUserId())
@@ -90,7 +101,7 @@ export default async function RootLayout({
                 </LibraryProvider>
               </SidebarProvider>
               {user && !user.user_metadata.onboarding_completed && (
-                <OnboardingDialog />
+                <OnboardingDialog disabled={isAdminHost} />
               )}
             </UserProvider>
           </PostHogProvider>
