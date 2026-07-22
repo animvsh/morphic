@@ -75,3 +75,63 @@ export function accountControlResponse(control: AccountControl) {
     }
   )
 }
+
+export async function accountQuotaResponse(
+  userId: string,
+  mode: 'quick' | 'adaptive',
+  control: AccountControl
+): Promise<Response | null> {
+  const limit =
+    mode === 'quick' ? control.quickDailyLimit : control.adaptiveDailyLimit
+  if (limit == null) return null
+
+  const startOfDay = new Date()
+  startOfDay.setUTCHours(0, 0, 0, 0)
+
+  try {
+    const client = getInsForgeAdminClient()
+    const { data, error } = await client.database
+      .from('brok_request_events')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('search_mode', mode)
+      .gte('started_at', startOfDay.toISOString())
+
+    if (error) throw error
+    const used = data?.length ?? 0
+    if (used < limit) return null
+
+    const resetAt = new Date(startOfDay)
+    resetAt.setUTCDate(resetAt.getUTCDate() + 1)
+    return new Response(
+      JSON.stringify({
+        error: `Daily limit for ${mode === 'quick' ? 'Quick' : 'Adaptive'} mode reached. Please try again tomorrow.`,
+        code: 'account_quota_exceeded',
+        mode,
+        limit,
+        remaining: 0,
+        resetAt: resetAt.getTime()
+      }),
+      {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          'X-RateLimit-Limit': String(limit),
+          'X-RateLimit-Remaining': '0',
+          'X-RateLimit-Reset': String(resetAt.getTime())
+        }
+      }
+    )
+  } catch (error) {
+    // An explicit administrator limit must fail closed. Silently allowing the
+    // request would make the control appear active while bypassing it.
+    console.error('Account quota lookup failed:', error)
+    return new Response(
+      JSON.stringify({
+        error: 'Account quota could not be verified. Please try again.',
+        code: 'account_quota_unavailable'
+      }),
+      { status: 503, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+}

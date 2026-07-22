@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto'
 import { loadChat } from '@/lib/actions/chat'
 import {
   accountControlResponse,
+  accountQuotaResponse,
   getAccountControl
 } from '@/lib/admin/account-control'
 import { createRequestEvent, failRequestEvent } from '@/lib/admin/usage'
@@ -165,6 +166,13 @@ export async function POST(req: Request) {
       const accountControl = await getAccountControl(userId)
       const blockedResponse = accountControlResponse(accountControl)
       if (blockedResponse) return blockedResponse
+
+      const quotaResponse = await accountQuotaResponse(
+        userId,
+        searchMode,
+        accountControl
+      )
+      if (quotaResponse) return quotaResponse
 
       const overallLimitResponse = await checkAndEnforceOverallChatLimit(
         userId,
