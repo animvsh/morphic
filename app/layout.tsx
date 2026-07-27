@@ -29,6 +29,7 @@ const title = 'chat by brok labs'
 const description = "ai that's affordable. like, really affordable."
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://chat.brok.fyi'),
   title,
   description,
   openGraph: {
