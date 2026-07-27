@@ -4,6 +4,25 @@ type EvidenceResult = {
   content: string
 }
 
+function isHistoricalCompanyAssociation(
+  content: string,
+  company: string
+): boolean {
+  const escapedCompany = company.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const acquiredAfterCompany = new RegExp(
+    `${escapedCompany}\\s*(?:\\(\\s*)?(?:acq(?:uired)?\\s+by|sold\\s+to)`,
+    'i'
+  )
+  const historicalBeforeCompany = new RegExp(
+    `(?:formerly|previously|ex[-\\s])[^.\\n]{0,24}${escapedCompany}`,
+    'i'
+  )
+
+  return (
+    acquiredAfterCompany.test(content) || historicalBeforeCompany.test(content)
+  )
+}
+
 const PERSONAL_ACHIEVEMENT_PATTERN =
   /\b(hackathon|award|awarded|competition|prize|winner|winning|won|placed|track|teammates?)\b/i
 
@@ -208,6 +227,7 @@ export function buildIdentityResolution({
         .toLowerCase()
         .includes(company.toLowerCase())
       if (!mentionsCompany) return false
+      if (isHistoricalCompanyAssociation(result.content, company)) return false
       try {
         return new URL(result.url).pathname
           .toLowerCase()
