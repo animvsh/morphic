@@ -7,8 +7,8 @@
   "workers_dev": true,
   "routes": [
     {
-      "pattern": "brok.fyi/*",
-      "zone_name": "brok.fyi"
+      "pattern": "chat.brok.fyi",
+      "custom_domain": true
     },
     {
       "pattern": "admin.brok.fyi",
