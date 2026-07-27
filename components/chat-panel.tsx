@@ -925,6 +925,7 @@ export function ChatPanel({
                   className="shrink-0 size-8 md:size-10 rounded-full group"
                   type="button"
                   disabled={isLoading}
+                  aria-label="new chat"
                 >
                   <MessageCirclePlus className="size-4 transition-transform duration-[140ms] ease-[var(--motion-ease-out)] group-hover:rotate-12" />
                 </Button>
@@ -932,6 +933,7 @@ export function ChatPanel({
               <Button
                 type={isLoading ? 'button' : 'submit'}
                 size={'icon'}
+                aria-label={isLoading ? 'stop response' : 'send message'}
                 className={cn(
                   isLoading && 'animate-pulse',
                   'size-8 md:size-10 rounded-full'
