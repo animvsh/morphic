@@ -100,9 +100,7 @@ describe('icon-only control names', () => {
       }
     ])
 
-    expect(
-      screen.getByRole('button', { name: 'new chat' })
-    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'new chat' })).toBeInTheDocument()
   })
 
   test('announces password visibility state', () => {
