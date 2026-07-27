@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Inter as FontSans } from 'next/font/google'
+import { Outfit as FontSans } from 'next/font/google'
 import { headers } from 'next/headers'
 
 import { getCurrentUser, getCurrentUserId } from '@/lib/auth/get-current-user'
@@ -22,10 +22,10 @@ import './globals.css'
 
 const fontSans = FontSans({
   subsets: ['latin'],
-  variable: '--font-sans'
+  variable: '--font-outfit'
 })
 
-const title = 'brok'
+const title = 'chat by brok labs'
 const description = "ai that's affordable. like, really affordable."
 
 export const metadata: Metadata = {
@@ -82,7 +82,7 @@ export default async function RootLayout({
       >
         <ThemeProvider
           attribute="class"
-          defaultTheme="light"
+          defaultTheme="dark"
           enableSystem={false}
           disableTransitionOnChange
         >

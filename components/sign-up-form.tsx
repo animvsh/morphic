@@ -60,21 +60,23 @@ export function SignUpForm({
       className={cn('flex flex-col items-center gap-6', className)}
       {...props}
     >
-      <Card className="w-full max-w-sm">
+      <Card className="w-full max-w-sm rounded-[28px] border-border bg-card/95 shadow-2xl backdrop-blur-xl">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl flex flex-col items-center justify-center gap-4">
+          <CardTitle className="flex flex-col items-center justify-center gap-4 text-2xl lowercase">
             <IconLogo className="size-12" />
-            Create an account
+            create an account
           </CardTitle>
-          <CardDescription>
-            Enter your details below to get started
+          <CardDescription className="lowercase">
+            enter your details below to get started
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="lowercase">
+                  email
+                </Label>
                 <Input
                   id="email"
                   type="email"
@@ -86,7 +88,9 @@ export function SignUpForm({
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password" className="lowercase">
+                    password
+                  </Label>
                 </div>
                 <PasswordInput
                   id="password"
@@ -99,7 +103,9 @@ export function SignUpForm({
               </div>
               <div className="grid gap-2">
                 <div className="flex items-center">
-                  <Label htmlFor="repeat-password">Repeat Password</Label>
+                  <Label htmlFor="repeat-password" className="lowercase">
+                    repeat password
+                  </Label>
                 </div>
                 <PasswordInput
                   id="repeat-password"
@@ -112,13 +118,13 @@ export function SignUpForm({
               </div>
               {error && <p className="text-sm text-red-500">{error}</p>}
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Creating account...' : 'Sign Up'}
+                {isLoading ? 'creating account...' : 'sign up'}
               </Button>
             </div>
-            <div className="mt-6 text-center text-sm">
-              Already have an account?{' '}
+            <div className="mt-6 text-center text-sm lowercase text-muted-foreground">
+              already have an account?{' '}
               <Link href="/auth/login" className="underline underline-offset-4">
-                Sign In
+                sign in
               </Link>
             </div>
           </form>
@@ -126,7 +132,7 @@ export function SignUpForm({
       </Card>
       <div className="text-center text-xs text-muted-foreground">
         <Link href="/" className="hover:underline">
-          &larr; Back to Home
+          &larr; back to brok
         </Link>
       </div>
     </div>

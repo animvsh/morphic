@@ -53,7 +53,7 @@ export function AnimatedLogo({
       className={cn('size-8', className)}
       {...props}
     >
-      <circle cx="128" cy="128" r="128" fill="black"></circle>
+      <circle cx="128" cy="128" r="128" fill="var(--primary)"></circle>
       <g
         className={cn(
           'origin-center',
@@ -66,7 +66,7 @@ export function AnimatedLogo({
           cy="128"
           rx="18"
           ry="18"
-          fill="white"
+          fill="var(--primary-foreground)"
           className={cn(!animate && isBlinking && 'animate-blink')}
         ></ellipse>
         <ellipse
@@ -74,7 +74,7 @@ export function AnimatedLogo({
           cy="128"
           rx="18"
           ry="18"
-          fill="white"
+          fill="var(--primary-foreground)"
           className={cn(!animate && isBlinking && 'animate-blink')}
         ></ellipse>
       </g>

@@ -3,6 +3,7 @@ import Link from 'next/link'
 
 import type { AppUser } from '@/lib/insforge/auth'
 
+import { IconLogo } from '@/components/ui/icons'
 import {
   Sidebar,
   SidebarContent,
@@ -25,17 +26,16 @@ export default function AppSidebar({ user }: { user: AppUser }) {
       side="left"
       variant="sidebar"
       collapsible="icon"
-      className="border-r border-black/[0.06]"
+      className="border-r border-sidebar-border"
     >
       <SidebarHeader className="flex flex-row items-center justify-between px-2 py-3">
         <Link href="/" className="flex min-w-0 items-center gap-2 px-1">
-          <span
-            className="size-5 shrink-0 rounded-[6px] bg-black shadow-[0_1px_0_rgba(255,255,255,0.28)_inset]"
-            aria-label="brok"
-          />
-          <span className="truncate text-sm font-medium lowercase">brok</span>
+          <IconLogo className="size-5 shrink-0" aria-label="brok labs" />
+          <span className="truncate text-sm font-medium lowercase">
+            brok labs
+          </span>
         </Link>
-        <SidebarTrigger className="shrink-0 text-black/45 hover:text-black" />
+        <SidebarTrigger className="shrink-0 text-muted-foreground hover:text-foreground" />
       </SidebarHeader>
       <SidebarContent className="flex h-full flex-col px-2 py-2">
         <SidebarMenu>
@@ -47,7 +47,7 @@ export default function AppSidebar({ user }: { user: AppUser }) {
           </Suspense>
         </div>
       </SidebarContent>
-      <SidebarFooter className="border-t border-black/[0.05] p-2">
+      <SidebarFooter className="border-t border-sidebar-border p-2">
         <UserMenu user={user} align="start" showLabel />
       </SidebarFooter>
       <SidebarRail />

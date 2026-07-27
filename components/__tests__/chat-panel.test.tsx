@@ -43,6 +43,9 @@ vi.mock('../uploaded-file-list', () => ({
 
 vi.mock('../ui/icons', () => ({
   IconBlinkingLogo: () => <div data-testid="logo" />,
+  IconLogo: ({ className }: { className?: string }) => (
+    <span className={className} data-testid="brand-logo" />
+  ),
   IconLogoOutline: ({ className }: { className?: string }) => (
     <span className={className} data-testid="adaptive-icon" />
   )

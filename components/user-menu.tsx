@@ -91,7 +91,7 @@ export default function UserMenu({
               </AvatarFallback>
             </Avatar>
             {showLabel && (
-              <span className="min-w-0 flex-1 truncate text-left text-xs font-normal lowercase text-black/55 group-data-[collapsible=icon]:hidden">
+              <span className="min-w-0 flex-1 truncate text-left text-xs font-normal lowercase text-muted-foreground group-data-[collapsible=icon]:hidden">
                 {user.email}
               </span>
             )}

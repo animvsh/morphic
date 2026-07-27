@@ -22,7 +22,7 @@ export function Header({ user }: HeaderProps) {
             <WaitlistDialog />
             <Link
               href="/auth/login"
-              className="rounded-full border border-black/10 bg-white/80 px-4 py-2 text-xs font-medium lowercase text-black shadow-sm backdrop-blur transition-colors hover:bg-black hover:text-white"
+              className="rounded-full border border-border bg-card/80 px-4 py-2 text-xs font-medium lowercase text-foreground shadow-sm backdrop-blur transition-colors hover:border-primary/45 hover:bg-accent"
             >
               sign in
             </Link>

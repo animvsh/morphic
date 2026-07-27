@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle
 } from '@/components/ui/card'
+import { IconLogo } from '@/components/ui/icons'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -59,11 +60,11 @@ export function LoginForm({
       className={cn('flex flex-col items-center gap-6', className)}
       {...props}
     >
-      <Card className="w-full max-w-sm rounded-[28px] border-black/[0.08] bg-[#f8f8f6] shadow-[0_24px_80px_rgba(0,0,0,0.09)]">
+      <Card className="w-full max-w-sm rounded-[28px] border-border bg-card/95 shadow-2xl backdrop-blur-xl">
         <CardHeader className="text-center">
           <CardTitle className="flex flex-col items-center justify-center gap-5 text-2xl lowercase tracking-[-0.035em]">
-            <span className="size-11 rounded-[13px] bg-black shadow-[0_1px_0_rgba(255,255,255,0.25)_inset]" />
-            {admin ? 'brok admin' : 'welcome to brok'}
+            <IconLogo className="size-11" aria-label="brok labs logo" />
+            {admin ? 'brok labs admin' : 'welcome to brok'}
           </CardTitle>
           <CardDescription className="mx-auto max-w-[30ch] lowercase leading-5">
             {admin
@@ -73,7 +74,7 @@ export function LoginForm({
         </CardHeader>
         <CardContent>
           {message && (
-            <p className="mb-4 rounded-xl bg-black/[0.04] px-3 py-2.5 text-center text-xs lowercase leading-5 text-black/55">
+            <p className="mb-4 rounded-xl bg-muted px-3 py-2.5 text-center text-xs lowercase leading-5 text-muted-foreground">
               {message}
             </p>
           )}
@@ -123,7 +124,7 @@ export function LoginForm({
             </form>
           </div>
           {!admin && (
-            <div className="mt-6 text-center text-xs lowercase leading-5 text-black/45">
+            <div className="mt-6 text-center text-xs lowercase leading-5 text-muted-foreground">
               new here? we&apos;ll make your account as you go.
             </div>
           )}

@@ -44,7 +44,7 @@ export function ActionButtons({
         <button
           key={starter.label}
           type="button"
-          className="rounded-full border border-black/10 bg-white/55 px-3 py-1.5 text-xs lowercase text-black/65 transition-colors hover:border-black/20 hover:bg-white hover:text-black"
+          className="rounded-full border border-border bg-card/70 px-3 py-1.5 text-xs lowercase text-muted-foreground transition-colors hover:border-primary/45 hover:bg-accent hover:text-foreground"
           onClick={() => {
             captureClient('example_prompt_clicked', {
               category: 'brok-starter',

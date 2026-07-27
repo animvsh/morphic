@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { IconArrowRight, IconCheck } from '@tabler/icons-react'
 
 import { Button } from '@/components/ui/button'
+import { IconLogo } from '@/components/ui/icons'
 
 const steps = [
   {
@@ -59,26 +60,27 @@ export function OnboardingDialog({ disabled = false }: { disabled?: boolean }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] grid place-items-center bg-black/25 px-5 py-8 backdrop-blur-[10px]"
+      className="fixed inset-0 z-[100] grid place-items-center bg-black/70 px-5 py-8 backdrop-blur-[10px]"
       data-testid="brok-onboarding"
       role="dialog"
       aria-modal="true"
       aria-labelledby="onboarding-title"
     >
-      <section className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] border border-white/70 bg-[#f8f8f6] px-7 pb-7 pt-8 text-black shadow-[0_28px_90px_rgba(0,0,0,0.22)] sm:px-9 sm:pb-9 sm:pt-10">
+      <section className="relative w-full max-w-[420px] overflow-hidden rounded-[28px] border border-border bg-card px-7 pb-7 pt-8 text-foreground shadow-2xl sm:px-9 sm:pb-9 sm:pt-10">
         <button
           type="button"
-          className="absolute right-5 top-5 rounded-full px-3 py-1.5 text-xs lowercase text-black/45 transition-colors hover:bg-black/[0.05] hover:text-black"
+          className="absolute right-5 top-5 rounded-full px-3 py-1.5 text-xs lowercase text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           onClick={finish}
           disabled={isSaving}
         >
           skip
         </button>
 
-        <div className="mb-12 flex size-12 items-center justify-center rounded-2xl bg-black text-2xl text-white shadow-[0_8px_24px_rgba(0,0,0,0.18)]">
-          {current.mark}
+        <div className="mb-12 flex items-center gap-3">
+          <IconLogo className="size-12" aria-label="brok labs logo" />
+          <span className="text-2xl text-primary">{current.mark}</span>
         </div>
-        <p className="mb-3 text-[11px] font-medium lowercase tracking-[0.16em] text-black/38">
+        <p className="mb-3 text-[11px] font-medium lowercase tracking-[0.16em] text-primary">
           {current.eyebrow}
         </p>
         <h2
@@ -87,7 +89,7 @@ export function OnboardingDialog({ disabled = false }: { disabled?: boolean }) {
         >
           {current.title}
         </h2>
-        <p className="mt-4 max-w-[33ch] text-pretty text-[15px] leading-6 text-black/55">
+        <p className="mt-4 max-w-[33ch] text-pretty text-[15px] leading-6 text-muted-foreground">
           {current.copy}
         </p>
 
@@ -97,14 +99,14 @@ export function OnboardingDialog({ disabled = false }: { disabled?: boolean }) {
               <span
                 key={index}
                 className={`h-1.5 rounded-full transition-all duration-300 ${
-                  index === step ? 'w-6 bg-black' : 'w-1.5 bg-black/15'
+                  index === step ? 'w-6 bg-primary' : 'w-1.5 bg-muted'
                 }`}
               />
             ))}
           </div>
           <Button
             type="button"
-            className="h-11 rounded-full bg-black px-5 lowercase text-white shadow-sm hover:bg-black/85"
+            className="bg-warm h-11 rounded-full px-5 lowercase text-primary-foreground shadow-sm hover:opacity-90"
             onClick={() =>
               step === steps.length - 1 ? finish() : setStep(step + 1)
             }

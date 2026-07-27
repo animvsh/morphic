@@ -47,6 +47,7 @@ import { useArtifact } from './artifact/artifact-context'
 import { useLibrary } from './library/library-context'
 import { LibraryPickerDialog } from './library/library-picker-dialog'
 import { Button } from './ui/button'
+import { IconLogo } from './ui/icons'
 import {
   Tooltip,
   TooltipContent,
@@ -437,16 +438,19 @@ export function ChatPanel({
       )}
     >
       {messages.length === 0 && (
-        <div className="mb-7 flex flex-col items-center gap-3 md:mb-9">
-          <span
-            className="size-12 rounded-[14px] bg-black shadow-[0_1px_0_rgba(255,255,255,0.28)_inset,0_10px_24px_rgba(0,0,0,0.12)]"
-            aria-label="brok logo"
+        <div className="mb-7 flex flex-col items-center gap-3 text-center md:mb-9">
+          <IconLogo
+            className="mb-1 size-12 drop-shadow-[0_12px_28px_oklch(0.08_0.01_60_/_0.5)]"
+            aria-label="brok labs logo"
           />
-          <h1 className="max-w-2xl text-center text-[clamp(1.65rem,4vw,2.35rem)] font-semibold lowercase leading-[1.08] tracking-[-0.045em] text-black">
-            brok — ai that&apos;s affordable. like, really affordable.
-          </h1>
-          <p className="text-sm lowercase text-black/45">
+          <p className="text-xs font-medium lowercase tracking-[0.14em] text-primary">
+            chat by brok labs
+          </p>
+          <h1 className="max-w-2xl text-[clamp(1.8rem,4vw,2.65rem)] font-medium lowercase leading-[1.04] tracking-[-0.045em] text-foreground">
             what can i help with?
+          </h1>
+          <p className="max-w-sm text-sm lowercase leading-relaxed text-muted-foreground">
+            affordable ai for everyday questions and deeper research.
           </p>
         </div>
       )}
@@ -597,11 +601,11 @@ export function ChatPanel({
 
         <div
           className={cn(
-            'relative flex w-full flex-col gap-2 rounded-[28px] border border-black/[0.08] bg-white transition-[box-shadow] duration-[140ms] ease-[var(--motion-ease-out)]',
+            'relative flex w-full flex-col gap-2 rounded-[28px] border border-border bg-card/95 transition-[border-color,box-shadow] duration-[140ms] ease-[var(--motion-ease-out)] backdrop-blur-xl',
             messages.length === 0 &&
-              'shadow-[0_1px_0_rgba(255,255,255,0.8)_inset,0_12px_32px_rgba(20,20,18,0.08)]',
+              'shadow-[0_1px_0_oklch(1_0_0_/_0.06)_inset,0_18px_50px_oklch(0.08_0.01_60_/_0.38)]',
             isInputFocused &&
-              'shadow-[0_0_0_3px_rgba(0,0,0,0.045),0_14px_36px_rgba(20,20,18,0.1)]'
+              'border-primary/55 shadow-[0_0_0_3px_oklch(0.78_0.082_78_/_0.12),0_20px_54px_oklch(0.08_0.01_60_/_0.46)]'
           )}
         >
           {contentCards.length > 0 && (
@@ -770,7 +774,7 @@ export function ChatPanel({
             value={input}
             disabled={isLoading || isToolInvocationInProgress()}
             className={cn(
-              'w-full resize-none border-0 bg-transparent px-4 text-sm text-black placeholder:text-black/38 focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 md:px-5',
+              'w-full resize-none border-0 bg-transparent px-4 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 md:px-5',
               messages.length === 0 ? 'min-h-24 pb-3 pt-5' : 'min-h-12 py-3'
             )}
             onChange={handleInputChange}
