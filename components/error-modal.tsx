@@ -59,7 +59,7 @@ export function ErrorModal({
       case 'rate-limit':
         return 'Rate Limit Exceeded'
       case 'auth':
-        return 'Continue with Morphic'
+        return 'continue with brok'
       case 'forbidden':
         return 'Access Denied'
       default:
@@ -75,10 +75,7 @@ export function ErrorModal({
           'You have made too many requests. Please wait a moment before trying again.'
         )
       case 'auth':
-        return (
-          error.message ||
-          'To use Morphic, sign in to your account or create a new one.'
-        )
+        return 'sign in to use reason mode. deep search stays available without an account.'
       case 'forbidden':
         return 'You do not have permission to access this resource.'
       default:
@@ -127,10 +124,10 @@ export function ErrorModal({
           {error.type === 'auth' ? (
             <>
               <Button asChild className="w-full">
-                <Link href="/auth/sign-up">Sign Up</Link>
+                <Link href="/auth/sign-up">sign up</Link>
               </Button>
               <Button asChild variant="outline" className="w-full">
-                <Link href="/auth/login">Sign In</Link>
+                <Link href="/auth/login">sign in</Link>
               </Button>
             </>
           ) : (
