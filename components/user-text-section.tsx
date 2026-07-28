@@ -284,6 +284,7 @@ export const UserTextSection: React.FC<UserTextSectionProps> = ({
                 variant="ghost"
                 size="icon"
                 className="rounded-full size-7"
+                aria-label={copied ? 'message copied' : 'copy message'}
                 onMouseDown={e => e.preventDefault()}
                 onClick={handleCopyClick}
               >
@@ -297,6 +298,7 @@ export const UserTextSection: React.FC<UserTextSectionProps> = ({
                 variant="ghost"
                 size="icon"
                 className="rounded-full size-7"
+                aria-label="edit message"
                 onMouseDown={e => e.preventDefault()}
                 onClick={handleEditClick}
               >

@@ -211,6 +211,7 @@ export function MessageActions({
             size="icon"
             onClick={handleCopy}
             className="rounded-full"
+            aria-label="copy response"
           >
             <Copy size={14} />
           </Button>
@@ -224,6 +225,8 @@ export function MessageActions({
                   onClick={() => handleFeedback(1)}
                   disabled={isSubmittingFeedback || feedbackScore === 1}
                   className="rounded-full"
+                  aria-label="mark response helpful"
+                  aria-pressed={feedbackScore === 1}
                 >
                   <ThumbsUp
                     size={14}
@@ -238,6 +241,8 @@ export function MessageActions({
                   onClick={() => handleFeedback(-1)}
                   disabled={isSubmittingFeedback || feedbackScore === -1}
                   className="rounded-full"
+                  aria-label="mark response unhelpful"
+                  aria-pressed={feedbackScore === -1}
                 >
                   <ThumbsDown
                     size={14}
