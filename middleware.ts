@@ -23,6 +23,14 @@ export async function middleware(request: NextRequest) {
     request.nextUrl.pathname === '/admin' ||
     request.nextUrl.pathname.startsWith('/admin/') ||
     request.nextUrl.pathname.startsWith('/api/admin/')
+  const isProtectedChatPage =
+    !isAdminHost &&
+    !isPublicBrokHost &&
+    (request.nextUrl.pathname === '/' ||
+      request.nextUrl.pathname === '/search' ||
+      request.nextUrl.pathname.startsWith('/search/') ||
+      request.nextUrl.pathname === '/projects' ||
+      request.nextUrl.pathname.startsWith('/projects/'))
 
   if (isPublicBrokHost && isAdminPath) {
     return new NextResponse('Not Found', { status: 404 })
@@ -49,8 +57,9 @@ export async function middleware(request: NextRequest) {
   const authAnonKey =
     process.env.INSFORGE_ANON_KEY ?? process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY
   const secure = (process.env.NEXT_PUBLIC_APP_URL ?? '').startsWith('https://')
+  let accessToken: string | null = null
   if (authBaseUrl && authAnonKey) {
-    await updateSession({
+    const session = await updateSession({
       baseUrl: authBaseUrl,
       anonKey: authAnonKey,
       options: {
@@ -60,6 +69,16 @@ export async function middleware(request: NextRequest) {
       requestCookies: request.cookies as any,
       responseCookies: response.cookies
     })
+    accessToken = session.accessToken
+  }
+
+  if (isProtectedChatPage && !accessToken) {
+    const loginUrl = new URL('/auth/login', baseUrl)
+    loginUrl.searchParams.set(
+      'next',
+      `${request.nextUrl.pathname}${request.nextUrl.search}`
+    )
+    return NextResponse.redirect(loginUrl, 307)
   }
 
   response.headers.set('x-url', request.url)
