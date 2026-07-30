@@ -125,14 +125,14 @@ export function LoginForm({
           </div>
           {!admin && (
             <div className="mt-6 text-center text-xs lowercase leading-5 text-muted-foreground">
-              new here? we&apos;ll make your account as you go.
+              an account is required. new here? we&apos;ll make one as you go.
             </div>
           )}
         </CardContent>
       </Card>
       <div className="text-center text-xs text-muted-foreground">
-        <Link href="/" className="hover:underline">
-          &larr; back to brok
+        <Link href="https://brok.fyi" className="hover:underline">
+          &larr; back to brok labs
         </Link>
       </div>
     </div>

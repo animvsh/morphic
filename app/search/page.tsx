@@ -16,19 +16,21 @@ export default async function SearchPage(props: {
     redirect('/')
   }
 
-  const id = generateUUID()
   const userId = await getCurrentUserId()
+  if (!userId) {
+    redirect(`/auth/login?next=${encodeURIComponent(`/search?q=${q}`)}`)
+  }
+
+  const id = generateUUID()
   const isCloudDeployment = process.env.MORPHIC_CLOUD_DEPLOYMENT === 'true'
-  const libraryAvailable = process.env.ENABLE_AUTH !== 'false'
   const modelSelectorData = await getModelSelectorData()
 
   return (
     <Chat
       id={id}
       query={q}
-      isGuest={!userId}
       isCloudDeployment={isCloudDeployment}
-      libraryAvailable={libraryAvailable}
+      libraryAvailable
       modelSelectorData={modelSelectorData}
     />
   )

@@ -15,6 +15,9 @@ export async function generateMetadata(props: {
 }) {
   const { id } = await props.params
   const userId = await getCurrentUserId()
+  if (!userId) {
+    return { title: 'chat by brok labs' }
+  }
 
   const chat = await loadChat(id, userId)
 
@@ -32,6 +35,9 @@ export default async function SearchPage(props: {
 }) {
   const { id } = await props.params
   const userId = await getCurrentUserId()
+  if (!userId) {
+    redirect(`/auth/login?next=${encodeURIComponent(`/search/${id}`)}`)
+  }
 
   const chat = await loadChat(id, userId)
 
@@ -39,22 +45,16 @@ export default async function SearchPage(props: {
     notFound()
   }
 
-  if (chat.visibility === 'private' && !userId) {
-    redirect('/auth/login')
-  }
-
   const messages: UIMessage[] = chat.messages
   const isCloudDeployment = process.env.MORPHIC_CLOUD_DEPLOYMENT === 'true'
-  const libraryAvailable = process.env.ENABLE_AUTH !== 'false'
   const modelSelectorData = await getModelSelectorData()
 
   return (
     <Chat
       id={id}
       savedMessages={messages}
-      isGuest={!userId}
       isCloudDeployment={isCloudDeployment}
-      libraryAvailable={libraryAvailable}
+      libraryAvailable
       modelSelectorData={modelSelectorData}
     />
   )

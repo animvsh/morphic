@@ -7,6 +7,7 @@ import https from 'https'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { createClient } from 'redis'
 
+import { getCurrentUserId } from '@/lib/auth/get-current-user'
 import {
   SearchResultItem,
   SearXNGResponse,
@@ -135,6 +136,14 @@ async function cleanupExpiredCache() {
 setInterval(cleanupExpiredCache, CACHE_EXPIRATION_CHECK_INTERVAL)
 
 export async function POST(request: Request) {
+  const userId = await getCurrentUserId()
+  if (!userId) {
+    return NextResponse.json(
+      { error: 'authentication required' },
+      { status: 401 }
+    )
+  }
+
   const { query, maxResults, searchDepth, includeDomains, excludeDomains } =
     await request.json()
 
@@ -222,8 +231,7 @@ async function advancedSearchXNGSearch(
     //console.log('SearXNG API URL:', url.toString()) // Log the full URL for debugging
 
     const data:
-      | SearXNGResponse
-      | { error: string; status: number; data: string } =
+      SearXNGResponse | { error: string; status: number; data: string } =
       await fetchJsonWithRetry(url.toString(), 3)
 
     if ('error' in data) {
