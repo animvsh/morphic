@@ -16,7 +16,7 @@ export async function generateMetadata(props: {
   const { id } = await props.params
   const userId = await getCurrentUserId()
   if (!userId) {
-    return { title: 'chat by brok labs' }
+    redirect(`/auth/login?next=${encodeURIComponent(`/search/${id}`)}`)
   }
 
   const chat = await loadChat(id, userId)
