@@ -19,6 +19,7 @@ import UserMenu from '@/components/user-menu'
 import { ChatHistorySection } from './sidebar/chat-history-section'
 import { ChatHistorySkeleton } from './sidebar/chat-history-skeleton'
 import { NewChatMenuItem } from './sidebar/new-chat-menu-item'
+import { SidebarPrimaryNav } from './sidebar/sidebar-primary-nav'
 
 export default function AppSidebar({ user }: { user: AppUser }) {
   return (
@@ -41,6 +42,7 @@ export default function AppSidebar({ user }: { user: AppUser }) {
         <SidebarMenu>
           <NewChatMenuItem />
         </SidebarMenu>
+        <SidebarPrimaryNav />
         <div className="flex-1 overflow-y-auto group-data-[collapsible=icon]:hidden">
           <Suspense fallback={<ChatHistorySkeleton />}>
             <ChatHistorySection />
