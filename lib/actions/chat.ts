@@ -288,6 +288,29 @@ export async function shareChat(chatId: string) {
   return updatedChat
 }
 
+export async function getChatShareState(chatId: string) {
+  const userId = await getCurrentUserId()
+  if (!userId) return null
+  const chat = await dbActions.getChat(chatId, userId)
+  if (!chat || chat.userId !== userId) return null
+  return { visibility: chat.visibility }
+}
+
+export async function unshareChat(chatId: string) {
+  const userId = await getCurrentUserId()
+  if (!userId) return null
+
+  const updatedChat = await dbActions.updateChatVisibility(
+    chatId,
+    userId,
+    'private'
+  )
+  if (updatedChat) {
+    revalidateTag(`chat-${chatId}`, 'max')
+  }
+  return updatedChat
+}
+
 /**
  * Delete messages from a specific message index
  */

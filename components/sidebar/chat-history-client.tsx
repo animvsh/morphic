@@ -1,7 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition
+} from 'react'
 
+import { IconSearch } from '@tabler/icons-react'
 import { toast } from 'sonner'
 
 import { Chat as DBChat } from '@/lib/db/schema'
@@ -27,6 +35,7 @@ export function ChatHistoryClient() {
   const [isLoading, setIsLoading] = useState(true)
   const loadMoreRef = useRef<HTMLDivElement>(null)
   const [isPending, startTransition] = useTransition()
+  const [query, setQuery] = useState('')
 
   const fetchInitialChats = useCallback(async () => {
     setIsLoading(true)
@@ -111,23 +120,44 @@ export function ChatHistoryClient() {
   }, [fetchMoreChats, nextOffset, isLoading, isPending])
 
   const isHistoryEmpty = !isLoading && !chats.length && nextOffset === null
+  const visibleChats = useMemo(() => {
+    const normalized = query.trim().toLowerCase()
+    if (!normalized) return chats
+    return chats.filter(chat => chat.title.toLowerCase().includes(normalized))
+  }, [chats, query])
 
   return (
     <div className="flex flex-col flex-1 h-full">
       <SidebarGroup>
         <div className="flex items-center justify-between w-full">
-          <SidebarGroupLabel className="p-0">History</SidebarGroupLabel>
+          <SidebarGroupLabel className="p-0 lowercase">
+            history
+          </SidebarGroupLabel>
           <ClearHistoryAction empty={isHistoryEmpty} />
         </div>
       </SidebarGroup>
+      <label className="mx-1 mb-2 flex min-h-10 items-center gap-2 rounded-xl border border-sidebar-border bg-sidebar-accent/35 px-3 text-muted-foreground focus-within:border-primary/45 focus-within:text-foreground">
+        <IconSearch size={15} className="shrink-0" />
+        <span className="sr-only">search history</span>
+        <input
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          placeholder="search history"
+          className="min-w-0 flex-1 bg-transparent text-xs lowercase text-foreground outline-none placeholder:text-muted-foreground"
+        />
+      </label>
       <div className="flex-1 overflow-y-auto mb-2 relative">
         {isHistoryEmpty && !isPending ? (
           <div className="px-2 text-foreground/30 text-sm text-center py-4">
-            No search history
+            no search history
+          </div>
+        ) : query && !visibleChats.length ? (
+          <div className="px-2 py-4 text-center text-sm lowercase text-foreground/30">
+            no matching chats
           </div>
         ) : (
           <SidebarMenu>
-            {chats.map(
+            {visibleChats.map(
               (chat: DBChat) =>
                 chat && <ChatMenuItem key={chat.id} chat={chat} />
             )}

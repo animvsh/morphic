@@ -260,10 +260,10 @@ export function MessageActions({
             onClick={handleSaveNote}
             disabled={isSavingNote}
             className="h-8 shrink-0 gap-1.5 rounded-full px-3"
-            aria-label="Save to library"
+            aria-label="save to library"
           >
             <Bookmark size={14} />
-            Save
+            save
           </Button>
         ) : (
           <div />

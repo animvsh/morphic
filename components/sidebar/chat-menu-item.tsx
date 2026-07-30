@@ -60,13 +60,13 @@ const formatDateWithTime = (date: Date | string) => {
     parsedDate.getMonth() === now.getMonth() &&
     parsedDate.getFullYear() === now.getFullYear()
   ) {
-    return `Today, ${formatTime(parsedDate)}`
+    return `today, ${formatTime(parsedDate)}`
   } else if (
     parsedDate.getDate() === yesterday.getDate() &&
     parsedDate.getMonth() === yesterday.getMonth() &&
     parsedDate.getFullYear() === yesterday.getFullYear()
   ) {
-    return `Yesterday, ${formatTime(parsedDate)}`
+    return `yesterday, ${formatTime(parsedDate)}`
   } else {
     return parsedDate.toLocaleString('en-US', {
       year: 'numeric',
@@ -135,7 +135,7 @@ export function ChatMenuItem({ chat }: ChatMenuItemProps) {
         <DropdownMenuTrigger asChild>
           <SidebarMenuAction className="size-7 p-1 mr-1">
             <MoreHorizontal size={16} />
-            <span className="sr-only">Chat Actions</span>
+            <span className="sr-only">chat actions</span>
           </SidebarMenuAction>
         </DropdownMenuTrigger>
         <DropdownMenuContent side="right" align="start">
@@ -148,7 +148,7 @@ export function ChatMenuItem({ chat }: ChatMenuItemProps) {
             }}
           >
             <Trash2 size={14} />
-            Delete Chat
+            delete chat
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -156,14 +156,18 @@ export function ChatMenuItem({ chat }: ChatMenuItemProps) {
       <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogTitle className="lowercase">
+              delete this chat?
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete this
-              chat history.
+              this cannot be undone. the conversation and its messages will be
+              permanently deleted.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isPending} className="lowercase">
+              cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               disabled={isPending}
               onClick={event => {
@@ -177,7 +181,7 @@ export function ChatMenuItem({ chat }: ChatMenuItemProps) {
                   <Spinner />
                 </div>
               ) : (
-                'Delete'
+                'delete'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

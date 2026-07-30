@@ -116,12 +116,12 @@ export default function UserMenu({
             }}
           >
             <UserRound className="size-4" />
-            <span>Account</span>
+            <span className="lowercase">account</span>
           </DropdownMenuItem>
           <DropdownMenuSub>
             <DropdownMenuSubTrigger>
               <Link2 className="size-4" />
-              <span>Links</span>
+              <span className="lowercase">links</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuSubContent>
               <ExternalLinkItems />
@@ -130,7 +130,7 @@ export default function UserMenu({
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={handleLogout}>
             <LogOut className="size-4" />
-            <span>Logout</span>
+            <span className="lowercase">log out</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

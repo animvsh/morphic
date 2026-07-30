@@ -870,7 +870,7 @@ export function ChatPanel({
                           variant="outline"
                           size="icon"
                           className="size-8 rounded-full"
-                          aria-label="Add"
+                          aria-label="add"
                           aria-expanded={isAttachmentMenuOpen}
                           onClick={() => setIsAttachmentMenuOpen(open => !open)}
                         >
@@ -878,7 +878,7 @@ export function ChatPanel({
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent side="bottom" className="text-xs">
-                        Add
+                        add
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -894,7 +894,7 @@ export function ChatPanel({
                         }}
                       >
                         <Paperclip className="size-4" />
-                        Upload file
+                        upload file
                       </button>
                       <button
                         type="button"
@@ -902,7 +902,7 @@ export function ChatPanel({
                         onClick={openLibraryPicker}
                       >
                         <LibraryIcon className="size-4" />
-                        Add from library
+                        add from library
                       </button>
                     </div>
                   )}

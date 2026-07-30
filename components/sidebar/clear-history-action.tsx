@@ -79,9 +79,9 @@ export function ClearHistoryAction({ empty }: ClearHistoryActionProps) {
   return (
     <DropdownMenu open={isMenuOpen} onOpenChange={handleMenuOpenChange}>
       <DropdownMenuTrigger asChild>
-        <SidebarGroupAction disabled={empty} className="static size-7 p-1">
+        <SidebarGroupAction disabled={empty} className="static size-11 p-2">
           <MoreHorizontal size={16} />
-          <span className="sr-only">History Actions</span>
+          <span className="sr-only">history actions</span>
         </SidebarGroupAction>
       </DropdownMenuTrigger>
 
@@ -95,20 +95,24 @@ export function ClearHistoryAction({ empty }: ClearHistoryActionProps) {
                 event.preventDefault()
               }}
             >
-              <Trash2 size={14} /> Clear History
+              <Trash2 size={14} /> clear history
             </DropdownMenuItem>
           </AlertDialogTrigger>
 
-          <AlertDialogContent>
+          <AlertDialogContent className="rounded-[28px]">
             <AlertDialogHeader>
-              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This action cannot be undone. It will permanently delete your
-                history.
+              <AlertDialogTitle className="lowercase">
+                clear all history?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="lowercase">
+                this cannot be undone. every saved conversation will be
+                permanently deleted.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogCancel disabled={isPending} className="lowercase">
+                cancel
+              </AlertDialogCancel>
               <AlertDialogAction
                 disabled={isPending}
                 onClick={event => {
@@ -116,7 +120,7 @@ export function ClearHistoryAction({ empty }: ClearHistoryActionProps) {
                   handleClearAction()
                 }}
               >
-                {isPending ? <Spinner /> : 'Clear'}
+                {isPending ? <Spinner /> : 'clear history'}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>

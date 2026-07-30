@@ -44,9 +44,9 @@ interface AccountSettingsDialogProps {
 }
 
 const themeOptions = [
-  { value: 'light', label: 'Light', icon: Sun },
-  { value: 'dark', label: 'Dark', icon: Moon },
-  { value: 'system', label: 'System', icon: Laptop }
+  { value: 'light', label: 'light', icon: Sun },
+  { value: 'dark', label: 'dark', icon: Moon },
+  { value: 'system', label: 'system', icon: Laptop }
 ]
 
 export function AccountSettingsDialog({
@@ -73,14 +73,14 @@ export function AccountSettingsDialog({
           console.error('Failed to clear client session:', error)
         }
 
-        toast.success('Account deleted')
+        toast.success('account deleted')
         setConfirmOpen(false)
         onOpenChange(false)
         window.location.assign('/')
         return
       }
 
-      toast.error(result.error ?? 'Failed to delete account')
+      toast.error(result.error ?? 'failed to delete account')
     })
   }
 
@@ -96,18 +96,18 @@ export function AccountSettingsDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="rounded-[28px] sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Account</DialogTitle>
-          <DialogDescription>
-            Manage your account preferences and data.
+          <DialogTitle className="lowercase">account</DialogTitle>
+          <DialogDescription className="lowercase">
+            manage your account preferences and data.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6">
           <section className="grid gap-3">
             <div className="grid gap-1">
-              <h3 className="text-sm font-medium">Profile</h3>
+              <h3 className="text-sm font-medium lowercase">profile</h3>
               <div className="text-sm text-muted-foreground">
                 <p className="truncate">{userName}</p>
                 <p className="truncate">{user.email}</p>
@@ -119,9 +119,9 @@ export function AccountSettingsDialog({
 
           <section className="grid gap-3">
             <div className="grid gap-1">
-              <h3 className="text-sm font-medium">Theme</h3>
-              <p className="text-sm text-muted-foreground">
-                Choose how Morphic appears on this device.
+              <h3 className="text-sm font-medium lowercase">theme</h3>
+              <p className="text-sm lowercase text-muted-foreground">
+                choose how brok appears on this device.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-2">
@@ -134,7 +134,7 @@ export function AccountSettingsDialog({
                     key={option.value}
                     type="button"
                     variant={selected ? 'secondary' : 'outline'}
-                    className="h-16 flex-col gap-1.5 px-2"
+                    className="h-16 flex-col gap-1.5 px-2 lowercase"
                     aria-pressed={selected}
                     onClick={() => setTheme(option.value)}
                   >
@@ -150,12 +150,12 @@ export function AccountSettingsDialog({
 
           <section className="grid gap-3">
             <div className="grid gap-1">
-              <h3 className="text-sm font-medium text-destructive">
-                Delete account
+              <h3 className="text-sm font-medium lowercase text-destructive">
+                delete account
               </h3>
-              <p className="text-sm text-muted-foreground">
-                Permanently delete your account, chat history, and uploaded
-                files. This action cannot be undone.
+              <p className="text-sm lowercase text-muted-foreground">
+                permanently delete your account, chat history, and uploaded
+                files. this action cannot be undone.
               </p>
             </div>
 
@@ -171,24 +171,29 @@ export function AccountSettingsDialog({
                 <Button
                   type="button"
                   variant="destructive"
-                  className="w-fit gap-2"
+                  className="min-h-11 w-fit gap-2 lowercase"
                   disabled={isDeleting}
                 >
                   <Trash2 className="size-4" />
-                  Delete account
+                  delete account
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
+              <AlertDialogContent className="rounded-[28px]">
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. Your account, chat history,
+                  <AlertDialogTitle className="lowercase">
+                    delete your account?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="lowercase">
+                    this action cannot be undone. your account, chat history,
                     and uploaded files will be permanently deleted.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isDeleting}>
-                    Cancel
+                  <AlertDialogCancel
+                    disabled={isDeleting}
+                    className="lowercase"
+                  >
+                    cancel
                   </AlertDialogCancel>
                   <AlertDialogAction
                     disabled={isDeleting}
@@ -198,7 +203,7 @@ export function AccountSettingsDialog({
                     }}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    {isDeleting ? <Spinner /> : 'Delete account'}
+                    {isDeleting ? <Spinner /> : 'delete account'}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

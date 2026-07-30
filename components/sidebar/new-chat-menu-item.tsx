@@ -9,10 +9,10 @@ import { SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
 export function NewChatMenuItem() {
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild>
+      <SidebarMenuButton asChild className="min-h-11 lowercase">
         <Link href="/" className="flex items-center gap-2">
           <Plus className="size-4" />
-          <span>New</span>
+          <span>new chat</span>
         </Link>
       </SidebarMenuButton>
     </SidebarMenuItem>
